@@ -1,0 +1,33 @@
+name: 'Export comments'
+description: 'Export comments to markdown inside a folder'
+inputs:
+  code-folder:
+    description: 'Folder from which the code is fetch'
+    required: true
+  output-folder:
+    description: 'Folder where the doc is generated'
+    required: true
+runs:
+  using: "composite"
+  steps:
+    - name: Setup Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.12'
+
+    - name: Pip Install Diagrams
+      uses: BSFishy/pip-action@v1
+      with:
+        packages: |
+          diagrams
+
+    - name: Install D2
+      run: curl -fsSL https://d2lang.com/install.sh | sh -s --
+      shell: sh
+
+    - name: Create markdown documentation
+      run: python doc_exporter.py $CODE_FOLDER $OUTPUT_FOLDER
+      shell: sh
+      env:
+        CODE_FOLDER: ${{ inputs.code-folder }}
+        OUTPUT_FOLDER: ${{ inputs.output-folder }}
