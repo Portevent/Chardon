@@ -13,6 +13,7 @@ class ContentType(Enum):
     CODE = auto()
     SEPARATOR = auto()
     TABLE = auto()
+    IMAGE = auto()
 
 
 class TableCell:
@@ -92,13 +93,14 @@ class Content(ABC):
         return Content(ContentType.TEXT, {'text': text})
 
     @staticmethod
-    def List(texts: List[str]) -> 'Content':
+    def List(texts: List[str], ordered: bool = False) -> 'Content':
         """
         Create a List Content, containing text entries
         :param texts: Elements in the list
+        :param ordered: If the list is ordered or not (- - - or 1 2 3)
         :return: List Content
         """
-        return Content(ContentType.LIST, {'children': texts})
+        return Content(ContentType.LIST, {'children': texts, 'ordered': ordered})
 
     @staticmethod
     def Title(title: str, level: int = 1) -> 'Content':
@@ -111,16 +113,16 @@ class Content(ABC):
         return Content(ContentType.TITLE, {'text': title, 'level': level})
 
     @staticmethod
-    def Quote(quote: str, author: str = None, date: str = None, location: str = None) -> 'Content':
+    def Quote(quote: 'Content', author: str = None, date: str = None, location: str = None) -> 'Content':
         """
         Create a Quote Content, which contains a quote, made by someone, at some time
-        :param quote: Text
+        :param quote: content to quote
         :param author: Who made this quote
         :param date: When this quote was made
         :param location: Where this quote was made
         :return: Quote Content
         """
-        attrs = {'text': quote}
+        attrs = {'quote': quote}
         if author:
             attrs['author'] = author
         if date:
@@ -164,3 +166,15 @@ class Content(ABC):
                 attr['rows'] = [TableRow(cells) for cells in rows]
 
                 return Content(ContentType.TABLE, attr)
+
+    @staticmethod
+    def Image(source: str, alt: str = "", link: str = "", title: str = "") -> 'Content':
+        """
+        Create an Image Content
+        :param source:
+        :param alt:
+        :param link:
+        :param title:
+        :return: Table Content
+        """
+        return NotImplemented
