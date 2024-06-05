@@ -4,6 +4,9 @@ from typing import List
 
 
 class ContentType(Enum):
+    """
+    Content can have a type to represent their struct and what kind of information they store
+    """
     SECTION = auto()
     HEADER = auto()
     TEXT = auto()
@@ -41,7 +44,7 @@ class TableRow:
             self.cells = []
             return
 
-        if type(cells[0]) is str:
+        if isinstance(cells[0], str):
             self.cells = [TableCell(text) for text in cells]
         else:
             self.cells = cells
@@ -113,7 +116,8 @@ class Content(ABC):
         return Content(ContentType.TITLE, {'text': title, 'level': level})
 
     @staticmethod
-    def Quote(quote: 'Content', author: str = None, date: str = None, location: str = None) -> 'Content':
+    def Quote(quote: 'Content', author: str = None,
+                date: str = None, location: str = None) -> 'Content':
         """
         Create a Quote Content, which contains a quote, made by someone, at some time
         :param quote: content to quote
@@ -160,12 +164,12 @@ class Content(ABC):
         attr = {'headers': headers, 'rows': []}
 
         if len(rows) > 0:
-            if type(rows) is TableRow:
+            if isinstance(rows, TableRow):
                 attr['rows'] = rows
             else:  # Convert each str[] to TableRow
                 attr['rows'] = [TableRow(cells) for cells in rows]
 
-                return Content(ContentType.TABLE, attr)
+        return Content(ContentType.TABLE, attr)
 
     @staticmethod
     def Image(source: str, alt: str = "", link: str = "", title: str = "") -> 'Content':
