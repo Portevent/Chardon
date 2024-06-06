@@ -1,3 +1,4 @@
+"""Structure normalisation of information"""
 from enum import Enum, auto, Flag
 from typing import List
 
@@ -13,15 +14,20 @@ class ContentType(Enum):
     TEXT = auto()
     SPAN = auto()
     LIST = auto()
+    LIST_ENTRY = auto()
     TITLE = auto()
     QUOTE = auto()
     CODE = auto()
     SEPARATOR = auto()
     TABLE = auto()
     IMAGE = auto()
+    LINK = auto()
 
 
 class TextStyle(Flag):
+    """
+    Style variant for emphasized text
+    """
     REGULAR = auto()
     ITALIC = auto()
     BOLD = auto()
@@ -34,11 +40,40 @@ class TableCell:
     A single Table Cell
     """
 
-    def __init__(self, text: str, size: int = 1):
-        self.text = text
+    def __init__(self, content: 'Content', size: int = 1):
+        self.content = content
         self.size = size
 
+    def get_size(self) -> int:
+        """
+        Get the size of the cell
+        @return: size
+        """
+        return self.size
 
+    def set_size(self, size: int):
+        """
+        Set the size of the cell
+        @param size: New size
+        """
+        self.size = size
+
+    def get_content(self) -> 'Content':
+        """
+        Get the Content of the cell
+        @return: Content
+        """
+        return self.content
+
+    def set_content(self, content: 'Content'):
+        """
+        Set the Content of the cell
+        @param content: New content
+        """
+        self.content = content
+
+
+# pylint: disable=too-few-public-methods
 class TableRow:
     """
     A Table Row, containing cells
@@ -47,20 +82,20 @@ class TableRow:
     def __init__(self, cells: List[str] | List[TableCell]):
         """
         Create a row, from either a list of str or a list of TableCell
-        :param cells: cells within this row
-        :return: TableRow
+        @param cells: cells within this row
+        @return: TableRow
         """
         if len(cells) == 0:
             self.cells = []
             return
 
         if isinstance(cells[0], str):
-            self.cells = [TableCell(text) for text in cells]
+            self.cells = [TableCell(Content.FromText(text)) for text in cells]
         else:
             self.cells = cells
 
 
-
+# pylint: disable=invalid-name
 class Content:
     """
     Class that define the bases of content registration.
@@ -74,111 +109,175 @@ class Content:
         self.type = content_type
         self.attributes = attributes
 
+    def __repr__(self):
+        return f"<{self.type.name}{' '.join(map(str, self.attributes.get('children', [])))}>"
+
+    def __str__(self):
+        return f"<{self.type.name}{' '.join(map(str, self.attributes.get('children', [])))}>"
+
+    def add_children(self, child: 'Content'):
+        """
+        Insert a child inside the content
+        (only if the content is from a type that can holds children)
+        @param child: Content to add
+        """
+        if 'children' in self.attributes:
+            self.attributes['children'].append(child)
+        else:
+            raise AttributeError(f'Trying to fit a children inside a {self.type} content')
+
     @staticmethod
-    def Section(contents: List['Content']) -> 'Content':
+    def Section(contents: List['Content'], attributes: dict = None) -> 'Content':
         """
         Create a Section Content, which hold children
-        :param contents: contents within it
-        :return: Section Content
+        @param contents: contents within it
+        @param attributes: optional custom attributes
+        @return: Section Content
         """
-        return Content(ContentType.SECTION, {'children': contents})
+        attr = attributes or {}
+        attr['children'] = contents
+        return Content(ContentType.SECTION, attr)
 
     @staticmethod
     def Header(attributes: dict) -> 'Content':
         """
         Create a Header Content, which hold attributes and metadata
-        :param attributes: attributes
-        :return: Header Content
+        @param attributes: attributes
+        @param attributes: optional custom attributes
+        @return: Header Content
         """
         return Content(ContentType.HEADER, attributes)
 
     @staticmethod
-    def Text(text: str) -> 'Content':
-        return Content(ContentType.TEXT, {'text': text})
+    def Text(text: str, attributes: dict = None) -> 'Content':
+        """
+        Create a Text Content, which hold plain text
+        @param text: Text
+        @param attributes: optional custom attributes
+        @return: Text Content
+        """
+        attr = attributes or {}
+        attr['text'] = text
+        return Content(ContentType.TEXT, attr)
 
     @staticmethod
     def FromText(text: str) -> 'Content':
+        """
+        Create a Span Content, from text that will be parsed
+        @param text: text to parse
+        @return: Span Content with parsed text inside
+        """
         return Content.Span(Content.parser(text).parse())
 
     @staticmethod
-    def Span(children: List['Content'], style: TextStyle = TextStyle.REGULAR) -> 'Content':
-        return Content(ContentType.SPAN, {'style': style, 'children': children})
+    def Span(children: List['Content'], style: TextStyle = TextStyle.REGULAR,
+             attributes: dict = None) -> 'Content':
+        """
+        Create a Span Content, which hold formatting and sub-span or text Content
+        @param children: Contents within this span
+        @param style: Formatting this span gives
+        @param attributes: optional custom attributes
+        @return: Span Content
+        """
+        attr = attributes or {}
+        attr['style'] = style
+        attr['children'] = children
+        return Content(ContentType.SPAN, attr)
 
     @staticmethod
-    def OrderedList(texts: List[str]) -> 'Content':
-        """
-        Create an ordered List Content, containing text entries
-        :param texts: Elements in the list
-        :return: List Content
-        """
-        return Content(ContentType.LIST, {'children': texts, 'ordered': True})
-
-    @staticmethod
-    def UnorderedList(texts: List[str]) -> 'Content':
-        """
-        Create an unordered List Content, containing text entries
-        :param texts: Elements in the list
-        :return: List Content
-        """
-        return Content(ContentType.LIST, {'children': texts, 'ordered': False})
-
-    @staticmethod
-    def Title(title: str, level: int = 1) -> 'Content':
+    def Title(title: str, level: int = 1, attributes: dict = None) -> 'Content':
         """
         Create a Title Content
-        :param title: Title
-        :param level: Level of the title (starting from 1, which is the default)
-        :return: Title Content
+        @param title: Title
+        @param level: Level of the title (starting from 1, which is the default)
+        @param attributes: optional custom attributes
+        @return: Title Content
         """
-        return Content(ContentType.TITLE, {'text': title, 'level': level})
+        attr = attributes or {}
+        attr['text'] = title
+        attr['level'] = level
+        return Content(ContentType.TITLE, attr)
+
+    @staticmethod
+    def QuoteText(quote: str, author: str = None,
+                  date: str = None, location: str = None,
+                  attributes: dict = None) -> 'Content':
+        """
+        Create a Quote Content from a text (use .Quote for quoting a content block)
+        @param quote: content to quote
+        @param author: Who made this quote
+        @param date: When this quote was made
+        @param location: Where this quote was made
+        @param attributes: optional custom attributes
+        @return: Quote Content
+        """
+        return Content.Quote(Content.FromText(quote), author, date, location, attributes)
 
     @staticmethod
     def Quote(quote: 'Content', author: str = None,
-                date: str = None, location: str = None) -> 'Content':
+              date: str = None, location: str = None,
+              attributes: dict = None) -> 'Content':
         """
-        Create a Quote Content, which contains a quote, made by someone, at some time
-        :param quote: content to quote
-        :param author: Who made this quote
-        :param date: When this quote was made
-        :param location: Where this quote was made
-        :return: Quote Content
+        Create a Quote Content from another content (use .QuoteText for quoting a string)
+        A Quote contains a quote, made by someone, at some time
+        @param quote: content to quote
+        @param author: Who made this quote
+        @param date: When this quote was made
+        @param location: Where this quote was made
+        @param attributes: optional custom attributes
+        @return: Quote Content
         """
-        attrs = {'quote': quote}
+        attr = attributes or {}
+        attr['quote'] = quote
         if author:
-            attrs['author'] = author
+            attr['author'] = author
         if date:
-            attrs['date'] = date
+            attr['date'] = date
         if location:
-            attrs['location'] = location
-        return Content(ContentType.QUOTE, attrs)
+            attr['location'] = location
+        return Content(ContentType.QUOTE, attr)
 
     @staticmethod
-    def Code(code: str, language: str = None) -> 'Content':
+    def Code(code: str, language: str = None, attributes: dict = None) -> 'Content':
         """
         Create a Code Content, which hold code from a specific language
-        :param code: Code
-        :param language: Name of the language
-        :return: Code Content
+        @param code: Code
+        @param language: Name of the language
+        @param attributes: optional custom attributes
+        @return: Code Content
         """
-        return Content(ContentType.CODE, {'text': code, 'language': language})
+        attr = attributes or {}
+        attr['text'] = code
+        attr['language'] = language
+        return Content(ContentType.CODE, attributes)
 
     @staticmethod
-    def Separator() -> 'Content':
+    def Separator(attributes: dict = None) -> 'Content':
         """
         Create an horizontal Separator
-        :return: Separator Content
+        @param attributes: optional custom attributes
+        @return: Separator Content
         """
-        return Content(ContentType.SEPARATOR, {})
+        return Content(ContentType.SEPARATOR, attributes or {})
 
     @staticmethod
-    def Table(headers: List[str], rows: List[TableRow | List[str]]) -> 'Content':
+    def Table(headers: List[str] | List['Content'], rows: List[TableRow | List[str]],
+              attributes: dict = None) -> 'Content':
         """
         Create a Table Content
-        :param headers: Name of the columns
-        :param rows: Rows within it
-        :return: Table Content
+        @param headers: Name of the columns
+        @param rows: Rows within it
+        @param attributes: optional custom attributes
+        @return: Table Content
         """
-        attr = {'headers': headers, 'rows': []}
+
+        attr = attributes or {}
+        attr['headers'] = headers
+        attr['rows'] = []
+
+        if len(headers) > 0:
+            if isinstance(headers[0], str):
+                attr['headers'] = [Content.FromText(text) for text in headers]
 
         if len(rows) > 0:
             if isinstance(rows[0], TableRow):
@@ -189,36 +288,96 @@ class Content:
         return Content(ContentType.TABLE, attr)
 
     @staticmethod
-    def Image(source: str, alt: str = "", link: str = "",
-              title: str = "", caption: str = "") -> 'Content':
+    def Image(uri: str, alt: str, link: str = "",
+              attributes: dict = None) -> 'Content':
         """
         Create an Image Content
-        :param source: URI of the image
-        :param alt: Alt text
-        :param link: Link
-        :param title: Title of the image
-        :param caption: Caption to display below image
-        :return: Image Content
+        @note : Some exporter may use way more attributes, such as <title> <width> <height> etc...
+        @param uri: URI of the image
+        @param alt: Alt text
+        @param link: Link to open when clicking the image
+        @param attributes: optional custom attributes
+        @return: Image Content
         """
-        attrs = {'source': source}
-        if alt:
-            attrs['alt'] = alt
+        attr = attributes or {}
+        attr['uri'] = uri
+        attr['alt'] = alt
         if link:
-            attrs['link'] = link
-        if title:
-            attrs['title'] = title
-        if caption:
-            attrs['caption'] = caption
-        return Content(ContentType.IMAGE, attrs)
+            attr['link'] = link
+        return Content(ContentType.IMAGE, attr)
 
-    def __repr__(self):
-        return f"<{self.type.name} {' '.join(map(str, self.attributes['children'] if 'children' in self.attributes else []))}>"
+    @staticmethod
+    def Link(text: str, target: str, alt: str = "",
+             attributes: dict = None) -> 'Content':
+        """
+        Create a Link Content
+        @param text: Text
+        @param target: Target where this link points to
+        @param alt: Alt text
+        @param attributes: optional custom attributes
+        @return: Link Content
+        """
+        attr = attributes or {}
+        attr['text'] = text
+        attr['target'] = target
+        if alt:
+            attr['alt'] = alt
+        return Content(ContentType.LINK, attr)
 
-    def __str__(self):
-        return f"<{self.type.name} {' '.join(map(str, self.attributes['children'] if 'children' in self.attributes else []))}>"
+    @staticmethod
+    def InternalLink(text: str, attributes: dict = None) -> 'Content':
+        """
+        Create a Link Content that is internal and only has text by default
+        @param text: Text
+        @param attributes: optional custom attributes
+        @return: Link Content
+        """
+        attr = attributes or {}
+        attr['text'] = text
+        attr['internal-link'] = True
+        return Content(ContentType.LINK, attr)
 
-    def addChildren(self, child: 'Content'):
-        if 'children' in self.attributes:
-            self.attributes['children'].append(child)
-        else:
-            raise Exception(f'Trying to fit a children inside a {self.type} content')
+    @staticmethod
+    def ListEntry(entry: 'Content', level: int = 0,
+                  completed: bool = None, attributes: dict = None) -> 'Content':
+        """
+        Create a List Entry Content, containing ListEntry Content
+        @param entry: Entry in the list
+        @param level: Level of the entry (starts at 0 for main list)
+        @param completed: checked tasked or not (None for no checkbox at all)
+        @param attributes: optional custom attributes
+        @return: List Entry Content
+        """
+        attr = attributes or {}
+        attr['entry'] = entry
+        attr['level'] = level
+        if completed is not None:
+            attr['completed'] = completed
+        return Content(ContentType.LIST_ENTRY, attr)
+
+    @staticmethod
+    def List(entries: List[str] | List['Content'],
+             ordered: bool = False, attributes: dict = None, checkbox: bool = None) -> 'Content':
+        """
+        Create a List Content, containing ListEntry Content
+        @param entries: Entries in the list
+        @param ordered: Ordered list or not
+        @param checkbox: Default state of the checkbox (None for no checkbox)
+        @param attributes: optional custom attributes
+        @return: List Content
+        """
+        attr = attributes or {}
+        attr['children'] = []
+        attr['ordered'] = ordered
+        if len(entries) > 0:
+            if isinstance(entries[0], str):
+                attr['children'] = [Content.ListEntry(Content.FromText(text), completed=checkbox)
+                                    for text in entries]
+            else:
+                content: 'Content'
+                # Encapsulate all content that are not List Entry into a List Entry Content
+                attr['children'] = [content if content.type == ContentType.LIST_ENTRY
+                                    else Content.ListEntry(content)
+                                    for content in entries]
+
+        return Content(ContentType.LIST, attr)

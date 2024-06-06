@@ -31,6 +31,6 @@ class ContentExport(ABC):
     def export(self, contents: List[Content]) -> str:
         """
         Export Contents to str in the implemented language
-        :param contents : Contents to export
+        @param contents : Contents to export
         """
         return NotImplemented

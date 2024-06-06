@@ -91,7 +91,7 @@ class MarkdownParser(TextParser):
     def _skip_enum_text_to(self, skip_to: int):
         """
         Advance in the enum to reach certain position
-        :param skip_to: Position to reach
+        @param skip_to: Position to reach
         """
         while self._enum_index + 1 < skip_to:
             self._enum_text()

@@ -29,7 +29,7 @@ class SummaryLink:
 class Article:
 
     def __init__(self):
-        self.header: Content = None
+        self.header: Content = Content.Header()
         self.summary: list[SummaryLink] = []
         self.content: list[Content] = []
         self.tags: list[str] = []

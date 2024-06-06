@@ -11,13 +11,13 @@ def joins(elements: List[str], before: str = '', before_each: str = '',
           after: str = '', after_each: str = '', between_each: str = ''):
     """
     Convert a list into a string
-    :param elements: list
-    :param before: Text before the list
-    :param before_each: Text before each element of the list
-    :param after: Text after the list
-    :param after_each: Text after each element of the list
-    :param between_each: Text between each element of the list
-    :return: string
+    @param elements: list
+    @param before: Text before the list
+    @param before_each: Text before each element of the list
+    @param after: Text after the list
+    @param after_each: Text after each element of the list
+    @param between_each: Text between each element of the list
+    @return: string
     """
     return before + between_each.join(
         [before_each + element + after_each for element in elements]
@@ -37,8 +37,8 @@ def clean_list_element(element: str):
     - 1\ octet is equals to 8 bits
     - This is the second element
     See https://www.markdownguide.org/basic-syntax/#starting-unordered-list-items-with-numbers
-    :param element: Element to clean
-    :return: Unambiguous text
+    @param element: Element to clean
+    @return: Unambiguous text
     """
     if element[0].isdigit():
         i = 0
@@ -63,7 +63,7 @@ class MarkdownContentExport(ContentExport):
     """
     Export Content To Markdown
     """
-    BREAKLINE: MarkdownContentBreaklineType = MarkdownContentBreaklineType.BACKSLASH
+    BREAKLINE: MarkdownContentBreaklineType = MarkdownContentBreaklineType.TRAILING_WHITESPACE
 
     def __init__(self, params: dict = None):
         super().__init__(params)
@@ -87,12 +87,11 @@ class MarkdownContentExport(ContentExport):
             MarkdownContentBreaklineType.BR_TAG: '<br>\n'
         }[self.params['break_line_type']]  # Selecting the appropriate breakline
 
-        text = "".join([MarkdownContentExport._export(content) for content in contents])
+        text = "".join([self._export(content) for content in contents])
 
         return text.replace('\n', breakline)
 
-    @staticmethod
-    def _export(content: Content) -> str:
+    def _export(self, content: Content) -> str:
         """
         Export content, without considering the breaklines yet
         """
@@ -111,26 +110,28 @@ class MarkdownContentExport(ContentExport):
                     between_each="\n"
                 )
 
+            case ContentType.LIST_ENTRY:
+                exported_content = "    " * content.attributes['level'] + \
+                                   self._export(content.attributes['entry'])
+
             case ContentType.LIST:
-                if content.attributes['ordered']:
-                    exported_content = joins(
-                        elements=[f'{i + 1}. {element}' for i, element
-                                  in content.attributes['children']],
-                        between_each="\n"
-                    )
-                else:
-                    exported_content = joins(
-                        elements=list(map(clean_list_element, content.attributes['children'])),
-                        before_each='- ',
-                        between_each="\n"
-                    )
+                ordered = content.attributes['ordered']
+                entries = ["    " * entry.attributes['level'] + \
+                           (f'{i + 1}. ' if ordered else "- ") + \
+                           self._export(entry.attributes['entry'])
+                           for i, entry in enumerate(content.attributes['children'])]
+
+                exported_content = joins(
+                    elements=entries,
+                    between_each="\n"
+                )
 
             case ContentType.TEXT:
                 exported_content = content.attributes['text']
 
             case ContentType.SPAN:
                 exported_content = "".join([
-                    MarkdownContentExport._export(children)
+                    self._export(children)
                     for children in content.attributes['children']
                 ])
 
@@ -144,18 +145,18 @@ class MarkdownContentExport(ContentExport):
                 footer = base_footer
 
                 # Creating the footer
-                if content.attributes['author']:
+                if 'author' in content.attributes:
                     footer += f" {content.attributes['author']}"
-                if content.attributes['date']:
+                if 'date' in content.attributes:
                     footer += f" {content.attributes['date']}"
-                if content.attributes['location']:
+                if 'location' in content.attributes:
                     footer += f" {content.attributes['location']}"
 
                 if footer == base_footer:  # If the footer is empty, remove it
                     footer = ""
 
                 exported_content = joins(
-                    elements=content.attributes['quote'].export().split('\n'),
+                    elements=self._export(content.attributes['quote']).split('\n'),
                     before_each="> ",
                     between_each="\n",
 
@@ -166,23 +167,31 @@ class MarkdownContentExport(ContentExport):
                 )
 
             case ContentType.HEADER:
-                raise NotImplementedError
+                keys = content.attributes.keys()
+                values = {}
+                for key in keys:
+                    if isinstance(content.attributes[key], list):
+                        values[key] = joins(content.attributes[key],
+                                            before="\n", before_each="- ", after_each="\n")
+                    else:
+                        values[key] = content.attributes[key]
+                exported_content = '\n'.join([key + ": " + values[key] for key in keys])
+                exported_content = f"---\n{exported_content}---"
 
             case ContentType.SECTION:
                 exported_content = joins(
-                    elements=[content.export() for content in content.attributes['children']],
+                    elements=[self._export(content)
+                              for content in content.attributes['children']],
                     between_each="\n"
                 )
 
             case ContentType.IMAGE:
-                exported_content = joins(
-                    before=f"```{content.attributes['language']}\n",
-                    after="```",
+                title = f" {content.attributes['title']}" if 'title' in content.attributes else ""
+                size = f"|{content.attributes['size']}" if 'size' in content.attributes else ""
 
-                    elements=content.attributes['text'].split('\n'),
-                    before_each="  ",
-                    between_each="\n"
-                )
+                exported_content = f"![{content.attributes['alt']}{size}({content.attributes['uri']}{title})]"
+                if 'link' in content.attributes:
+                    exported_content = f"[{exported_content}]({content.attributes['link']})"
 
             case ContentType.TITLE:
                 # Put blank line around the title, for best practices :
@@ -191,6 +200,31 @@ class MarkdownContentExport(ContentExport):
                                    f" {content.attributes['text']}\n"
 
             case ContentType.TABLE:
-                raise NotImplementedError
+                exported_content = joins(
+                    [self._export(head).replace("|", "&#124;") for head in
+                     content.attributes['headers']],
+                    before="| ", after=" |\n", between_each=" | "
+                )
+
+                exported_content += joins(
+                    ["---" for _ in content.attributes['headers']],
+                    before="| ", after=" |\n", between_each=" | "
+                )
+
+                for row in content.attributes['rows']:
+                    exported_content += joins(
+                        [self._export(cell.content).replace("|", "\|") for cell in row.cells],
+                        before="| ", after=" |\n", between_each=" | "
+                    )
+
+            case ContentType.LINK:
+                if 'internal-link' in content.attributes and content.attributes['internal-link']:
+                    exported_content = f"[[{content.attributes['text']}]]"
+                else:
+                    exported_content = f"[{content.attributes['text']}" \
+                                       f"({content.attributes['target'].replace(' ', '%20')})]"
+
+            case _:
+                raise NotImplementedError(f'Type {content.type} is not implemented yet for markdown export')
 
         return exported_content
