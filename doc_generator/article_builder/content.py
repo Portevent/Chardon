@@ -1,6 +1,7 @@
-from abc import ABC, abstractmethod
-from enum import Enum, auto
+from enum import Enum, auto, Flag
 from typing import List
+
+from doc_generator.article_builder.parser.text_parser import TextParser
 
 
 class ContentType(Enum):
@@ -10,6 +11,7 @@ class ContentType(Enum):
     SECTION = auto()
     HEADER = auto()
     TEXT = auto()
+    SPAN = auto()
     LIST = auto()
     TITLE = auto()
     QUOTE = auto()
@@ -17,6 +19,14 @@ class ContentType(Enum):
     SEPARATOR = auto()
     TABLE = auto()
     IMAGE = auto()
+
+
+class TextStyle(Flag):
+    REGULAR = auto()
+    ITALIC = auto()
+    BOLD = auto()
+    UNDERLINED = auto()
+    STRIKETHROUGH = auto()
 
 
 class TableCell:
@@ -50,23 +60,19 @@ class TableRow:
             self.cells = cells
 
 
-class Content(ABC):
+
+class Content:
     """
-    Abstract class that define the bases of content registration.
-    It allows to represent information disposition non-specific to a language (MD, Json, Html)
-    Can be inherited to implement exporting to a language.
+    Class that define the bases of content registration.
+    It allows to represent information disposition non-specific to a language
+    Eg : it will store title, and not <h2>...</h2> or ## ...
     """
+
+    parser: type[TextParser]  # Need to be set at runtime, to specify which class to use as Parser
 
     def __init__(self, content_type: ContentType, attributes: dict):
         self.type = content_type
         self.attributes = attributes
-
-    @abstractmethod
-    def export(self) -> str:
-        """
-        Export itself to str in the implemented language
-        """
-        return NotImplemented
 
     @staticmethod
     def Section(contents: List['Content']) -> 'Content':
@@ -88,22 +94,33 @@ class Content(ABC):
 
     @staticmethod
     def Text(text: str) -> 'Content':
-        """
-        Create a Text Content
-        :param text: text within content
-        :return: Text Content
-        """
         return Content(ContentType.TEXT, {'text': text})
 
     @staticmethod
-    def List(texts: List[str], ordered: bool = False) -> 'Content':
+    def FromText(text: str) -> 'Content':
+        return Content.Span(Content.parser(text).parse())
+
+    @staticmethod
+    def Span(children: List['Content'], style: TextStyle = TextStyle.REGULAR) -> 'Content':
+        return Content(ContentType.SPAN, {'style': style, 'children': children})
+
+    @staticmethod
+    def OrderedList(texts: List[str]) -> 'Content':
         """
-        Create a List Content, containing text entries
+        Create an ordered List Content, containing text entries
         :param texts: Elements in the list
-        :param ordered: If the list is ordered or not (- - - or 1 2 3)
         :return: List Content
         """
-        return Content(ContentType.LIST, {'children': texts, 'ordered': ordered})
+        return Content(ContentType.LIST, {'children': texts, 'ordered': True})
+
+    @staticmethod
+    def UnorderedList(texts: List[str]) -> 'Content':
+        """
+        Create an unordered List Content, containing text entries
+        :param texts: Elements in the list
+        :return: List Content
+        """
+        return Content(ContentType.LIST, {'children': texts, 'ordered': False})
 
     @staticmethod
     def Title(title: str, level: int = 1) -> 'Content':
@@ -164,7 +181,7 @@ class Content(ABC):
         attr = {'headers': headers, 'rows': []}
 
         if len(rows) > 0:
-            if isinstance(rows, TableRow):
+            if isinstance(rows[0], TableRow):
                 attr['rows'] = rows
             else:  # Convert each str[] to TableRow
                 attr['rows'] = [TableRow(cells) for cells in rows]
@@ -172,13 +189,36 @@ class Content(ABC):
         return Content(ContentType.TABLE, attr)
 
     @staticmethod
-    def Image(source: str, alt: str = "", link: str = "", title: str = "") -> 'Content':
+    def Image(source: str, alt: str = "", link: str = "",
+              title: str = "", caption: str = "") -> 'Content':
         """
         Create an Image Content
-        :param source:
-        :param alt:
-        :param link:
-        :param title:
-        :return: Table Content
+        :param source: URI of the image
+        :param alt: Alt text
+        :param link: Link
+        :param title: Title of the image
+        :param caption: Caption to display below image
+        :return: Image Content
         """
-        return NotImplemented
+        attrs = {'source': source}
+        if alt:
+            attrs['alt'] = alt
+        if link:
+            attrs['link'] = link
+        if title:
+            attrs['title'] = title
+        if caption:
+            attrs['caption'] = caption
+        return Content(ContentType.IMAGE, attrs)
+
+    def __repr__(self):
+        return f"<{self.type.name} {' '.join(map(str, self.attributes['children'] if 'children' in self.attributes else []))}>"
+
+    def __str__(self):
+        return f"<{self.type.name} {' '.join(map(str, self.attributes['children'] if 'children' in self.attributes else []))}>"
+
+    def addChildren(self, child: 'Content'):
+        if 'children' in self.attributes:
+            self.attributes['children'].append(child)
+        else:
+            raise Exception(f'Trying to fit a children inside a {self.type} content')
