@@ -5,7 +5,7 @@ Abstract content export class
 from abc import ABC, abstractmethod
 from typing import List
 
-from doc_generator.article_builder.content.content import Content
+from article_builder.content.content import Content
 
 
 class ContentExport(ABC):

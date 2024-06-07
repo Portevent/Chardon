@@ -1,8 +1,8 @@
 """Debug class to parse text as is"""
 from typing import List
 
-from doc_generator.article_builder.content.content import Content
-from doc_generator.article_builder.parser.text_parser import TextParser
+from article_builder.content.content import Content
+from article_builder.parser.text_parser import TextParser
 
 
 # pylint: disable=too-few-public-methods

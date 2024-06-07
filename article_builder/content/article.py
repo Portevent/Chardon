@@ -3,8 +3,8 @@ Basic Article
 """
 from typing import List
 
-from doc_generator.article_builder.content.content import Content
-from doc_generator.article_builder.content.obsidian_note import ObsidianNote
+from article_builder.content.content import Content
+from article_builder.content.obsidian_note import ObsidianNote
 
 
 class Article(ObsidianNote):

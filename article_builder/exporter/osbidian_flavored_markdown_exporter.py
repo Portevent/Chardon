@@ -3,9 +3,9 @@ implementation of export content to Markdown
 """
 from enum import Enum
 
-from doc_generator.article_builder.content.content import ContentType, Content
+from article_builder.content.content import ContentType, Content
 
-from doc_generator.article_builder.exporter.markdown_exporter import MarkdownContentExport, joins
+from article_builder.exporter.markdown_exporter import MarkdownContentExport, joins
 
 
 class ObsidianCalloutType(str, Enum):

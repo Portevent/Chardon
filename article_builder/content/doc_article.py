@@ -1,8 +1,11 @@
+"""
+Article for Documentation
+"""
 import logging
 
-from .article import Article, Content, SummaryLink
-from .. import doc_reader
-from .. import diagram_builder
+from doc_parser import doc_reader
+from article_builder import diagram_builder
+from article_builder.content.article import Article
 
 
 class DocArticle(Article):
@@ -41,7 +44,7 @@ class DocArticle(Article):
         self.AddTag(class_raw_doc.getDeclarationType())
         self.AddAlias(class_raw_doc.getAlias())
         self.SetName(class_raw_doc.getName())
-        self.SetSlug(class_raw_doc.getName())
+        self.set_slug(class_raw_doc.getName())
 
         self.class_content = ClassContent(class_raw_doc)
 

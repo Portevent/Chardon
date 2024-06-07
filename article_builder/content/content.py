@@ -4,7 +4,7 @@ Structure normalisation of information
 from enum import Enum, auto, Flag
 from typing import List
 
-from doc_generator.article_builder.parser.text_parser import TextParser
+from article_builder.parser.text_parser import TextParser
 
 
 class ContentType(Enum):

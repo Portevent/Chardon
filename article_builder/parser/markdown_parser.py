@@ -2,8 +2,8 @@
 import re
 from typing import List
 
-from doc_generator.article_builder.content.content import Content, TextStyle
-from doc_generator.article_builder.parser.text_parser import TextParser
+from article_builder.content.content import Content, TextStyle
+from article_builder.parser.text_parser import TextParser
 
 
 class MarkdownParserBuffer:

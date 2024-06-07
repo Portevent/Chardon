@@ -4,8 +4,8 @@ implementation of export content to Markdown
 from enum import Enum, auto
 from typing import List
 
-from doc_generator.article_builder.content.content import ContentType, Content, TextStyle
-from doc_generator.article_builder.exporter.content_export import ContentExport
+from article_builder.content.content import ContentType, Content, TextStyle
+from article_builder.exporter.content_export import ContentExport
 
 
 # pylint: disable=too-many-arguments
