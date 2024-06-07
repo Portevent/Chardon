@@ -19,7 +19,7 @@ SCOPES = {
 
 BLOCK_REGEX = r'(?P<attributes>\[.*\])? ?(?P<declaration>[\w ]+[\w]) ?:? ?' \
               r'(?P<parameters>\(.*\))?(?P<inheritance>.+)?'
-ATTRIBUTE_REGEX = r'\[(?P<attribut>.*?)\]'
+ATTRIBUTE_REGEX = r'\[(?P<attribute>.*?)\]'
 INHERIT_REGEX = r'(?P<inherit>\w+)'
 PARAMETER_REGEX = r'(?P<modificator>in |out |ref readonly |ref )?(?P<type>[\w<>\[\]]+) ' \
                   r'(?P<name>\w+) ?=? ?(?P<def_value> ?[\w\'\"<>\{\}]+)?'
@@ -44,11 +44,13 @@ FUNCTION_MODIFIERS = [
 ]
 
 
+# pylint: disable=too-few-public-methods
 class TagComment:
     """
     Tag in comments
     eg. <link to="EntityAI" type="double-arrow">Play turn</link>
     """
+
     def __init__(self, tag: str, content: str, attributes: dict = None):
         self.tag = tag
         self.content = content
@@ -68,6 +70,155 @@ class Block:
 
 
 # pylint: disable=too-few-public-methods
+def _parse_attributes(text: str) -> List[str]:
+    """
+    Parse text to a list of Attributes
+    @param text: Input
+    @return: List of attributes
+    """
+    return re.findall(ATTRIBUTE_REGEX, text)
+
+
+def _parse_inheritance(text: str) -> List[str]:
+    """
+    Parse text to a list of Inheritance
+    @param text: Input
+    @return: List of classes
+    """
+    return re.findall(INHERIT_REGEX, text)
+
+
+def _parse_parameter(text: str) -> List[Parameter]:
+    """
+    Parse text to a list of Parameter
+    @param text: Input
+    @return: List of Parameter
+    """
+    return [Parameter(name, _type, "",
+                      default_value=def_value if def_value != "" else None,
+                      attributes={'modificator': modificator})
+            for modificator, _type, name, def_value in re.findall(PARAMETER_REGEX, text)]
+
+
+def _parse_comment_tag(text: str) -> dict:
+    """
+    Parse a tag into a dict of attributes
+    @param text: Input
+    @return: Dict of attributes
+    """
+    res: dict = {}
+    for key, _, value in re.findall(COMMENT_TAG_ATTRIBUTES_REGEX, text):
+        res[key] = value
+    return res
+
+
+def _parse_comment(text: str) -> List[TagComment]:
+    """
+    Parse a comment into a doc dict
+    @param text: Input
+    @return: List of fields
+    """
+    return [TagComment(name, content, attributes=_parse_comment_tag(params))
+            for name, params, content in re.findall(COMMENT_REGEX, text, re.DOTALL)]
+
+
+def _find_scope(keywords: List[str], pop: bool = True) -> (Visibility, List[str]):
+    """
+    Find the score keyword among a list
+    @param keywords: List of keywords
+    @param pop: Remove it from the list
+    @return: The score and the rest of the keywords
+    """
+    for keyword, scope in SCOPES.items():
+        if keyword in keywords:
+            if pop:
+                keywords.remove(keyword)
+            return scope, keywords
+
+    raise ParsingError("No scope among keywords")
+
+
+def _clean_line(line: str) -> str:
+    """
+    Clean a line from Byte Order Mask and trailing space
+    @param line: input
+    @return: Clean line
+    """
+    line = line.strip()
+    # Clear Byte Order Mask from file
+    if line.startswith("ï»¿"):
+        line = line[len("ï»¿"):]
+    if line.startswith("\ufeff"):
+        line = line[len("\ufeff"):]
+
+    return line
+
+
+# pylint: disable=too-many-locals
+def _parse_block(block: Block) -> Class | Field:
+    declaration: str = block.declaration
+    declaration.replace('\n', ' ')
+    parts: dict = re.match(BLOCK_REGEX, declaration).groupdict()
+
+    attributes: dict = {
+        'attributes': _parse_attributes(parts['attributes'] or ""),
+        'comments': _parse_comment(block.comment)
+    }
+    inheritance: List[str] = _parse_inheritance(parts['inheritance'] or "")
+    parameters: List[Parameter] = _parse_parameter(parts['parameters'] or "")
+
+    keywords = parts['declaration'].split(' ')
+    name: str = keywords.pop()
+    visibility: Visibility
+
+    # Is a Class
+    if 'class' in keywords:
+        keywords.remove('class')
+
+        try:
+            visibility, keywords = _find_scope(keywords)
+        except ParsingError as e:
+            e.line = block.declaration
+            raise e
+
+        _class = Class(name, [], "", visibility, inheritance, attributes=attributes)
+
+        return _class
+
+    # Is a Struct
+    if 'struct' in keywords:
+        struct = Class(keywords[2], [], "", SCOPES[keywords[0]],
+                       [], ClassVariant.STRUCT, attributes=attributes)
+
+        return struct
+
+    # Is a Function
+    try:
+        visibility, keywords = _find_scope(keywords)
+    except ParsingError as e:
+        e.line = block.declaration
+        raise e
+
+    modifiers: List[str] = []
+    for modifier in FUNCTION_MODIFIERS:
+        if modifier in keywords:
+            keywords.remove(modifier)
+            modifiers.append(modifier)
+
+    if len(modifiers) > 0:
+        attributes['modifiers'] = modifiers
+
+    if len(keywords) == 1:
+        return_type: Parameter = Parameter('', keywords[0])
+    else:
+        raise ParsingError(f"Can't tell what is the return"
+                           f"type of {name} : {block.declaration}")
+
+    function = Function(parameters, [return_type])
+
+    return Field(name, function, visibility, attributes=attributes)
+
+
 class CSharpParser(Parser):
     """
 
@@ -121,7 +272,7 @@ class CSharpParser(Parser):
 
         # Parse all block
         for block in blocks:
-            res: Class | Field = self._parse_block(block)
+            res: Class | Field = _parse_block(block)
 
             # Focus on the new class
             if isinstance(res, Class):
@@ -142,84 +293,7 @@ class CSharpParser(Parser):
 
         return classes
 
-    def _clean_line(self, line: str) -> str:
-        """
-        Clean a line from Byte Order Mask and trailing space
-        @param line: input
-        @return: Clean line
-        """
-        line = line.strip()
-        # Clear Byte Order Mask from file
-        if line.startswith("ï»¿"):
-            line = line[len("ï»¿"):]
-        if line.startswith("\ufeff"):
-            line = line[len("\ufeff"):]
-
-        return line
-
-    def _parse_attributes(self, text: str) -> List[str]:
-        """
-        Parse text to a list of Attributes
-        @param text: Input
-        @return: List of attributes
-        """
-        return re.findall(ATTRIBUTE_REGEX, text)
-
-    def _parse_inheritance(self, text: str) -> List[str]:
-        """
-        Parse text to a list of Inheritance
-        @param text: Input
-        @return: List of classes
-        """
-        return re.findall(INHERIT_REGEX, text)
-
-    def _parse_parameter(self, text: str) -> List[Parameter]:
-        """
-        Parse text to a list of Parameter
-        @param text: Input
-        @return: List of Parameter
-        """
-        return [Parameter(name, _type, "",
-                          default_value=def_value if def_value != "" else None,
-                          attributes={'modificator': modificator})
-                for modificator, _type, name, def_value in re.findall(PARAMETER_REGEX, text)]
-
-    def _parse_comment_tag(self, text: str) -> dict:
-        """
-        Parse a tag into a dict of attributes
-        @param text: Input
-        @return: Dict of attributes
-        """
-        res: dict = {}
-        for key, _, value in re.findall(COMMENT_TAG_ATTRIBUTES_REGEX, text):
-            res[key] = value
-        return res
-
-
-    def _parse_comment(self, text: str) -> List[TagComment]:
-        """
-        Parse a comment into a doc dict
-        @param text: Input
-        @return: List of fields
-        """
-        return [TagComment(name, content, attributes=self._parse_comment_tag(params))
-                for name, params, content in re.findall(COMMENT_REGEX, text, re.DOTALL)]
-
-    def _find_scope(self, keywords: List[str], pop: bool = True) -> (Visibility, List[str]):
-        """
-        Find the score keyword among a list
-        @param keywords: List of keywords
-        @param pop: Remove it from the list
-        @return: The score and the rest of the keywords
-        """
-        for scope in SCOPES:
-            if scope in keywords:
-                if pop:
-                    keywords.remove(scope)
-                return SCOPES[scope], keywords
-
-        raise ParsingError("No scope among keywords")
-
+    # pylint: disable=too-many-branches
     def _parse_raw_code(self, lines: List[str]) -> List[Block]:
         """
         Parse all Comment and associated Declaration
@@ -233,7 +307,7 @@ class CSharpParser(Parser):
         current_declaration: str = ""
 
         for index, line in enumerate(lines):
-            line = self._clean_line(line)
+            line = _clean_line(line)
 
             # Append any comment inside /// to current_comment
             if line.startswith("///"):
@@ -278,72 +352,10 @@ class CSharpParser(Parser):
                                  " (issue will be created to explain further how this is a problem",
                                  index, line)
 
+                # pylint: disable=W0511
                 # Todo : add code coverage test and such, not in the project scope yet
                 if self.parameters.get('analyse_uncommentend_code', False):
                     if 'class' in line:
                         logging.info("Undocumented class at %s %s", index, line)
 
         return blocks
-
-    def _parse_block(self, block: Block) -> Class | Field:
-        declaration: str = block.declaration
-        declaration.replace('\n', ' ')
-        parts: dict = re.match(BLOCK_REGEX, declaration).groupdict()
-
-        attributes: dict = {
-            'attributes': self._parse_attributes(parts['attributes'] or ""),
-            'comments': self._parse_comment(block.comment)
-        }
-        inheritance: List[str] = self._parse_inheritance(parts['inheritance'] or "")
-        parameters: List[Parameter] = self._parse_parameter(parts['parameters'] or "")
-
-        keywords = parts['declaration'].split(' ')
-        name: str = keywords.pop()
-
-        if 'class' in keywords:
-            keywords.remove('class')
-
-            visibility: Visibility
-            try:
-                visibility, keywords = self._find_scope(keywords)
-            except ParsingError as e:
-                e.line = block.declaration
-                raise e
-
-            _class = Class(name, [], "", visibility, inheritance, attributes=attributes)
-
-            return _class
-
-        elif 'struct' in keywords:
-            struct = Class(keywords[2], [], "", SCOPES[keywords[0]],
-                           [], ClassVariant.STRUCT, attributes=attributes)
-
-            return struct
-
-        else:
-            visibility: Visibility
-            return_type: Parameter
-            try:
-                visibility, keywords = self._find_scope(keywords)
-            except ParsingError as e:
-                e.line = block.declaration
-                raise e
-
-            modifiers: List[str] = []
-            for modifier in FUNCTION_MODIFIERS:
-                if modifier in keywords:
-                    keywords.remove(modifier)
-                    modifiers.append(modifier)
-
-            if len(modifiers) > 0:
-                attributes['modifiers'] = modifiers
-
-            if len(keywords) == 1:
-                return_type = Parameter('', keywords[0])
-            else:
-                raise ParsingError(f"Can't tell what is the return"
-                                   f"type of {name} : {block.declaration}")
-
-            function = Function(parameters, [return_type])
-
-            return Field(name, function, visibility, attributes=attributes)
