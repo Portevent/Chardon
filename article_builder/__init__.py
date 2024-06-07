@@ -1,1 +1,0 @@
-from .doc_article import DocArticle
