@@ -1,8 +1,10 @@
-"""implementation of export content to Markdown"""
+"""
+implementation of export content to Markdown
+"""
 from enum import Enum, auto
 from typing import List
 
-from doc_generator.article_builder.content import ContentType, Content, TextStyle
+from doc_generator.article_builder.content.content import ContentType, Content, TextStyle
 from doc_generator.article_builder.exporter.content_export import ContentExport
 
 
@@ -91,11 +93,12 @@ class MarkdownContentExport(ContentExport):
 
         return text.replace('\n', breakline)
 
+    # pylint: disable=too-many-branches
     def _export(self, content: Content) -> str:
         """
         Export content, without considering the breaklines yet
         """
-        exported_content: str = ""
+        exported_content: str
         match content.type:
             case ContentType.SEPARATOR:
                 exported_content = '\n---\n'
@@ -116,8 +119,8 @@ class MarkdownContentExport(ContentExport):
 
             case ContentType.LIST:
                 ordered = content.attributes['ordered']
-                entries = ["    " * entry.attributes['level'] + \
-                           (f'{i + 1}. ' if ordered else "- ") + \
+                entries = ["    " * entry.attributes['level'] +
+                           (f'{i + 1}. ' if ordered else "- ") +
                            self._export(entry.attributes['entry'])
                            for i, entry in enumerate(content.attributes['children'])]
 
@@ -186,10 +189,13 @@ class MarkdownContentExport(ContentExport):
                 )
 
             case ContentType.IMAGE:
-                title = f" {content.attributes['title']}" if 'title' in content.attributes else ""
-                size = f"|{content.attributes['size']}" if 'size' in content.attributes else ""
+                title = f" {content.attributes['title']}"\
+                    if 'title' in content.attributes else ""
+                size = f"|{content.attributes['size']}"\
+                    if 'size' in content.attributes else ""
 
-                exported_content = f"![{content.attributes['alt']}{size}({content.attributes['uri']}{title})]"
+                exported_content = f"![{content.attributes['alt']}{size}" \
+                                   f"({content.attributes['uri']}{title})]"
                 if 'link' in content.attributes:
                     exported_content = f"[{exported_content}]({content.attributes['link']})"
 
@@ -225,6 +231,7 @@ class MarkdownContentExport(ContentExport):
                                        f"({content.attributes['target'].replace(' ', '%20')})]"
 
             case _:
-                raise NotImplementedError(f'Type {content.type} is not implemented yet for markdown export')
+                raise NotImplementedError(f'Type {content.type} is not implemented'
+                                          f'yet for {self.__class__.__name__}')
 
         return exported_content

@@ -1,9 +1,11 @@
-"""Abstract content export class"""
+"""
+Abstract content export class
+"""
 
 from abc import ABC, abstractmethod
 from typing import List
 
-from doc_generator.article_builder.content import Content
+from doc_generator.article_builder.content.content import Content
 
 
 class ContentExport(ABC):
