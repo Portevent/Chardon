@@ -4,16 +4,15 @@ Function
 from typing import List
 
 from code_parser.structure.parameter import Parameter
-from code_parser.structure.type import Type
 
 
 # pylint: disable=too-few-public-methods
-class Function(Type):
+class Function:
     """
     Store a Function, with Parameters
     """
 
-    def __init__(self, inputs: List[Parameter] = None, outputs: List[Parameter] = None):
+    def __init__(self, inputs: List[Parameter] = None, outputs: List[Parameter] = None, ):
         """
         Init Function
         @param inputs: input parameters
