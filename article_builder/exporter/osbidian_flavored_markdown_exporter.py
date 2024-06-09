@@ -85,14 +85,13 @@ class ObsidianFlavoredMarkdownContentExport(MarkdownContentExport):
                 if content.attributes.get('internal-link', False):
                     text: str = ('|' + content.attributes['text'])\
                         if 'text' in content.attributes else ''
-                    exported_content = f"[[{content.attributes['target']}{text}]]"
+                    exported_content = f"[[#{content.attributes['target']}{text}]]"
 
                     if 'embed' in content.attributes and content.attributes['embed']:
                         exported_content = '!' + exported_content
 
                 else:
-                    exported_content = f"[{content.attributes['text']}" \
-                                       f"({content.attributes['target'].replace(' ', '%20')})]"
+                    return super()._export(content)
 
             case _:
                 return super()._export(content)

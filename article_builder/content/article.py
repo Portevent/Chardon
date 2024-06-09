@@ -9,11 +9,11 @@ from article_builder.content.obsidian_note import ObsidianNote
 
 class Article(ObsidianNote):
     """
-    Meta Content to store a basic Article layout, containing slug metadata and summary
+    Meta Content to store a basic Article layout, containing slug metadata and table of content
     """
     def __init__(self):
         super().__init__()
-        self.summary: Content = Content.Table(['Name', 'Description'], [])
+        self.table_of_contents: Content = Content.List([])
         self.header.attributes['slug'] = ''
 
     def set_slug(self, slug: str):
@@ -31,7 +31,7 @@ class Article(ObsidianNote):
         """
         self.content.append(content)
         if create_link:
-            self.summary.add_children(Content.InternalLink(content.attributes['text']))
+            self.table_of_contents.add_children(Content.InternalLink(content.attributes['text']))
 
     def to_contents(self) -> List[Content]:
         """
@@ -39,5 +39,5 @@ class Article(ObsidianNote):
         Used to export it afterward
         @return: List of Contents
         """
-        return [self.header, Content.Title("Summary :"),
-                self.summary, Content.Separator()] + self.content
+        return [self.header, Content.Title("Table of contents :"),
+                self.table_of_contents, Content.Separator()] + self.content

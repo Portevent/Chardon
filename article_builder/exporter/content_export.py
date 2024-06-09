@@ -14,6 +14,9 @@ class ContentExport(ABC):
     Can be implemented to export Contents into a specific format (Markdown, html, etc)
     """
 
+    # Default extension to use
+    PREFERRED_EXTENSION: str = ".txt"
+
     def __init__(self, params: dict = None):
         """
         Init an Exporter, with possible parameters

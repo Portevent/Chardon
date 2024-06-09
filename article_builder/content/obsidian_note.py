@@ -18,11 +18,6 @@ class ObsidianNote:
         })
         self.content: list[Content] = []
 
-        self.file = {
-            'directory': '',
-            'filename': ''
-        }
-
     def set_title(self, title: str):
         """
         Set the title of the note
@@ -43,15 +38,6 @@ class ObsidianNote:
         @param tag: tag
         """
         self.header.attributes['tags'].append(tag)
-
-    def set_file_export(self, directory: str, filename: str):
-        """
-        Set file export
-        @param directory: Directory
-        @param filename: Filename
-        """
-        self.file['directory'] = directory
-        self.file['filename'] = filename
 
     def set_metadata(self, key: str, value):
         """
@@ -75,14 +61,3 @@ class ObsidianNote:
         @return: List of Contents
         """
         return [self.header] + self.content
-
-    def publish(self):
-        """
-        Todo : Move this somewhere else
-        @return:
-        """
-        # if not os.path.exists(self.directory):
-        #     os.makedirs(self.directory)
-
-        # with open(f'{self.directory}/{self.name}.md', 'w') as file:
-        #     file.write(self.Export())

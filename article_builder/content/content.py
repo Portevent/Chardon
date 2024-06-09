@@ -82,7 +82,7 @@ class TableRow:
     A Table Row, containing cells
     """
 
-    def __init__(self, cells: List[str] | List[TableCell]):
+    def __init__(self, cells: List[str] | List['Content'] | List[TableCell]):
         """
         Create a row, from either a list of str or a list of TableCell
         @param cells: cells within this row
@@ -94,6 +94,9 @@ class TableRow:
 
         if isinstance(cells[0], str):
             self.cells = [TableCell(Content.FromText(text)) for text in cells]
+        elif isinstance(cells[0], Content):
+            content: Content
+            self.cells = [TableCell(content) for content in cells]
         else:
             self.cells = cells
 
@@ -128,6 +131,17 @@ class Content:
             self.attributes['children'].append(child)
         else:
             raise AttributeError(f'Trying to fit a children inside a {self.type} content')
+
+    def add_row(self, row: 'Content'):
+        """
+        Insert a row inside the content
+        (only if the content is from a type that can holds rows)
+        @param row: Content to add
+        """
+        if 'rows' in self.attributes:
+            self.attributes['rows'].append(row)
+        else:
+            raise AttributeError(f'Trying to fit a row inside a {self.type} content')
 
     @staticmethod
     def Section(contents: List['Content'], attributes: dict = None) -> 'Content':
@@ -336,7 +350,7 @@ class Content:
         @return: Link Content
         """
         attr = attributes or {}
-        attr['text'] = text
+        attr['target'] = text
         attr['internal-link'] = True
         return Content(ContentType.LINK, attr)
 

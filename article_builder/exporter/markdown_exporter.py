@@ -65,6 +65,9 @@ class MarkdownContentExport(ContentExport):
     """
     Export Content To Markdown
     """
+
+    # Default extension to use
+    PREFERRED_EXTENSION: str = ".md"
     BREAKLINE: MarkdownContentBreaklineType = MarkdownContentBreaklineType.TRAILING_WHITESPACE
 
     def __init__(self, params: dict = None):
@@ -89,7 +92,7 @@ class MarkdownContentExport(ContentExport):
             MarkdownContentBreaklineType.BR_TAG: '<br>\n'
         }[self.params['break_line_type']]  # Selecting the appropriate breakline
 
-        text = "".join([self._export(content) for content in contents])
+        text = "\n".join([self._export(content) for content in contents])
 
         return text.replace('\n', breakline)
 
@@ -133,7 +136,7 @@ class MarkdownContentExport(ContentExport):
                 exported_content = content.attributes['text']
 
             case ContentType.SPAN:
-                exported_content = "".join([
+                exported_content = (content.attributes.get('separator', '')).join([
                     self._export(children)
                     for children in content.attributes['children']
                 ])
@@ -174,12 +177,16 @@ class MarkdownContentExport(ContentExport):
                 values = {}
                 for key in keys:
                     if isinstance(content.attributes[key], list):
-                        values[key] = joins(content.attributes[key],
-                                            before="\n", before_each="- ", after_each="\n")
+                        if len(content.attributes[key]) > 0:
+                            values[key] = joins(content.attributes[key],
+                                                before="\n", before_each="- ", after_each="\n")
                     else:
+                        if content.attributes[key] is None or content.attributes[key] == "":
+                            continue
+
                         values[key] = content.attributes[key]
-                exported_content = '\n'.join([key + ": " + values[key] for key in keys])
-                exported_content = f"---\n{exported_content}---"
+                exported_content = '\n'.join([key + ": " + value for key, value in values.items()])
+                exported_content = f"---\n{exported_content}\n---"
 
             case ContentType.SECTION:
                 exported_content = joins(
@@ -227,8 +234,8 @@ class MarkdownContentExport(ContentExport):
                 if 'internal-link' in content.attributes and content.attributes['internal-link']:
                     exported_content = f"[[{content.attributes['text']}]]"
                 else:
-                    exported_content = f"[{content.attributes['text']}" \
-                                       f"({content.attributes['target'].replace(' ', '%20')})]"
+                    exported_content = f"[{content.attributes['text']}]" \
+                                       f"({content.attributes['target'].replace(' ', '%20')})"
 
             case _:
                 raise NotImplementedError(f'Type {content.type} is not implemented'
