@@ -28,7 +28,7 @@ class Class(Type):
     # pylint: disable=too-many-arguments
     def __init__(self, name: str, fields: List[Field] = None, comment: str = "",
                  visibility: Visibility = Visibility.PUBLIC,
-                 inherits: List[Type | str] = None, variant: ClassVariant = ClassVariant.NONE,
+                 inherits: List[Type] = None, variant: ClassVariant = ClassVariant.NONE,
                  attributes: dict = None):
         """
         Init Class
@@ -36,7 +36,7 @@ class Class(Type):
         @param fields: fields
         @param comment: comment
         @param visibility: Scope of the class
-        @param inherits: inherits from classes or type (can be string if not documented yet)
+        @param inherits: inherits from classes or type
         @param variant: customize class to be a struct or enum
         @param attributes: custom attributes
         """
@@ -56,5 +56,7 @@ class Class(Type):
         self.fields.append(field)
 
     def __str__(self):
-        fields_text: str = '\n'.join(list(map(str, self.fields)))
-        return f"<Class {self.name} | \n{fields_text}\n>"
+        fields_text: str = ""
+        if len(self.fields):
+            fields_text = '\n' + '\n'.join(list(map(str, self.fields))) + '\n'
+        return f"<Class {self.name} | {fields_text}>"

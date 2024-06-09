@@ -8,7 +8,7 @@ from article_builder.parser.text_parser import TextParser
 # pylint: disable=too-few-public-methods
 class NoParser(TextParser):
     """
-    Simple parser that just return text as is
+    Simple language that just return text as is
     """
 
     def parse(self) -> List[Content]:

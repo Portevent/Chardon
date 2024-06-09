@@ -27,7 +27,7 @@ class Field:
         """
         Init a Field
         @param name: name
-        @param _type: Can be Type (or Class) or a Function
+        @param _type: Can be Type or a Function
         @param visibility: Scope
         @param comment: Comment
         @param attributes: custom attributes
