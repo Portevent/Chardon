@@ -97,6 +97,7 @@ class MarkdownContentExport(ContentExport):
         return text.replace('\n', breakline)
 
     # pylint: disable=too-many-branches
+    # pylint: disable=too-many-statements
     def _export(self, content: Content) -> str:
         """
         Export content, without considering the breaklines yet
