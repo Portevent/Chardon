@@ -1,6 +1,7 @@
 """
 C# Parser
 """
+import logging
 import re
 from typing import List
 
@@ -19,7 +20,7 @@ SCOPES = {
 }
 
 BLOCK_REGEX = r'(?P<attributes>\[.*\])? ?(?P<declaration>[\w \[\]\<\>]+[\w]) ?:? ?' \
-              r'(?P<parameters>\(.*\))?(?P<inheritance>.+)?'
+              r'(?P<parameters>\([^;]*\))?(?P<inheritance>[^=;]+)?=?(?P<default_value>[^;]*)'
 ATTRIBUTE_REGEX = r'\[(?P<attribute>.*?)\]'
 INHERIT_REGEX = r'(?P<inherit>\w+)'
 PARAMETER_REGEX = r'(?P<modificator>in |out |ref readonly |ref )?' \
@@ -28,7 +29,7 @@ PARAMETER_REGEX = r'(?P<modificator>in |out |ref readonly |ref )?' \
 COMMENT_REGEX = r'<(?P<name>\w+)(?P<params>[^>]*)>(?P<content>.*?)<\/(?P=name)>'
 COMMENT_TAG_ATTRIBUTES_REGEX = r'(?P<key>[\w\-\_]+) ?= ?(?P<quote>[\'\"])(?P<value>.+?)(?P=quote)'
 
-FUNCTION_MODIFIERS = [
+MODIFIERS = [
     'abstract',
     'async',
     'const',
@@ -182,6 +183,26 @@ def _clean_line(line: str) -> str:
 
 
 # pylint: disable=too-many-locals
+def _parse_declaration(declaration):
+    """
+    Parse declaration into a field name, a field visibility, modifiers and keywords
+    @param declaration:
+    @return: name, visibility, List of keywords
+    """
+    keywords = declaration.split(' ')
+    name: str = keywords.pop()
+    visibility, keywords = _find_scope(keywords)
+
+    # Class or Function modifier are specific tag before a name, such as static or abstract
+    modifiers: List[str] = []
+    for modifier in MODIFIERS:
+        if modifier in keywords:
+            keywords.remove(modifier)
+            modifiers.append(modifier)
+
+    return name, visibility, modifiers, keywords
+
+
 def _parse_block(block: Block) -> Class | Field:
     declaration: str = block.declaration
     declaration.replace('\n', ' ')
@@ -194,66 +215,57 @@ def _parse_block(block: Block) -> Class | Field:
     inheritance: List[Type] = _parse_inheritance(parts['inheritance'] or "")
     parameters: List[Parameter] = _parse_parameter(parts['parameters'] or "")
 
-    keywords = parts['declaration'].split(' ')
-    name: str = keywords.pop()
+    name: str
     visibility: Visibility
+    modifiers: List[str]
+    keywords: List[str]
+    name, visibility, modifiers, keywords = _parse_declaration(parts['declaration'])
+
+    if len(modifiers) > 0:
+        attributes['modifiers'] = modifiers
+
+    result: Class | Field
 
     # Is a Class
     if 'class' in keywords:
         keywords.remove('class')
 
-        try:
-            visibility, keywords = _find_scope(keywords)
-        except ParsingError as e:
-            e.line = block.declaration
-            raise e
-
-        _class = Class(name, [], "", visibility, inheritance, attributes=attributes)
-
-        return _class
+        result = Class(name, [], "", visibility, inheritance, attributes=attributes)
 
     # Is a Struct
-    if 'struct' in keywords:
-        struct = Class(name, [], "", SCOPES[keywords[0]],
+    elif 'struct' in keywords:
+        keywords.remove('struct')
+
+        result = Class(name, [], "", visibility,
                        [], ClassVariant.STRUCT, attributes=attributes)
 
-        return struct
-
     # Is an Enum
-    if 'enum' in keywords:
-        enum = Class(name, [], "", SCOPES[keywords[0]],
-                     [], ClassVariant.ENUM, attributes=attributes)
+    elif 'enum' in keywords:
+        keywords.remove('enum')
 
-        return enum
+        result = Class(name, [], "", visibility,
+                       [], ClassVariant.ENUM, attributes=attributes)
 
     # Is a Function
-    if 'parameters' in parts:
-        try:
-            visibility, keywords = _find_scope(keywords)
-        except ParsingError as e:
-            e.line = block.declaration
-            raise e
-
-        modifiers: List[str] = []
-        for modifier in FUNCTION_MODIFIERS:
-            if modifier in keywords:
-                keywords.remove(modifier)
-                modifiers.append(modifier)
-
-        if len(modifiers) > 0:
-            attributes['modifiers'] = modifiers
+    elif parts['parameters'] is not None:
 
         return_types: List[Parameter] = []
         if len(keywords) == 1:
-            if keywords[0] != "void":
-                return_types = [Parameter('', [Type(keywords[0])])]
+            return_type = keywords.pop()
+            if return_type != "void":
+                return_types.append(Parameter('', [Type(return_type)]))
         else:
             raise ParsingError(f"Can't tell what is the return "
                                f"type of {name} : {block.declaration}")
 
         function = Function(parameters, return_types)
 
-        return Field(name, function, visibility, attributes=attributes)
+        result = Field(name, function, visibility, attributes=attributes)
 
-    # Todo : make is a Field
-    raise NotImplementedError(f'Class variable are not implemented yet : {block.declaration}')
+    else:
+        result = Field(name, Type(keywords.pop()), visibility, attributes=attributes)
+
+    if len(keywords) > 0:
+        logging.warning("%s has unkown keywords : %s, will be ignored", result, keywords)
+
+    return result

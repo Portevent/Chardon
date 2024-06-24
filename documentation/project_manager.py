@@ -6,18 +6,22 @@ from pathlib import Path
 from typing import List
 
 from article_builder.content.content import Content
+from article_builder.content.documentation import DocArticle
 from article_builder.exporter.content_export import ContentExport
 from code_parser.language.parser import Parser
 from code_parser.structure.array_of_type import ArrayOfType
 from code_parser.structure.class_ import Class
 from code_parser.structure.function import Function
 
-
 # pylint: disable=too-few-public-methods
+from code_parser.structure.type import Type
+
+
 class ParsingResult:
     """
     Result of file parsing
     """
+
     def __init__(self, file: Path, clean_path: Path, results: List[Class]):
         self.file = file
         self.clean_path = clean_path
@@ -34,7 +38,6 @@ class ProjectManager:
     # pylint: disable=too-many-branches
     # pylint: disable=too-many-nested-blocks
     # pylint: disable=too-many-instance-attributes
-    # TODO : Remove the too-many-nested-blocks as ### 1 get reworked
     def __init__(self, parser: Parser, exporter: ContentExport,
                  directory: Path, out_directory: Path, file_regex: str = r'.*', encoding="utf-8"):
         self.parser = parser
@@ -54,32 +57,32 @@ class ProjectManager:
         # When we parse the code, we don't know if a class will be parsed, thus
         # most type are saved as string first, and we have to correctly reference them afterwards
         for class_ in self.classes.values():
-            for inherit in class_.inherits:
-                if isinstance(inherit, str) and inherit in self.classes:
-                    # TODO : This doesn't update value within class
-                    inherit = self.classes[inherit]
+            class_.inherits = list(map(self.type_to_class, class_.inherits))
 
             for field in class_.fields:
-                if isinstance(field.type, str) and field.type in self.classes:
-                    field.type = self.classes[field.type]
+                field.type = self.type_to_class(field.type)
 
                 if isinstance(field.type, Function):
-                    ### 1 - TO REWORK
                     for param in field.type.inputs:
-                        for type_ in param.types:
-                            if type_.name in self.classes:
-                                if isinstance(type_, ArrayOfType):
-                                    # TODO : This doesn't update the element within the Function
-                                    type_ = ArrayOfType(self.classes[type_.name])
-                                else:
-                                    type_ = self.classes[type_.name]
+                        param.types = list(map(self.type_to_class, param.types))
+
                     for param in field.type.outputs:
-                        for type_ in param.types:
-                            if type_.name in self.classes:
-                                if isinstance(type_, ArrayOfType):
-                                    type_ = ArrayOfType(self.classes[type_.name])
-                                else:
-                                    type_ = self.classes[type_.name]
+                        param.types = list(map(self.type_to_class, param.types))
+
+    def type_to_class(self, _type: Type) -> Type:
+        """
+        Try to convert str-type to Class-type from known class
+        @param _type: Type, which can be expressed as str
+        @return: Corresponding Class if known
+        """
+
+        if isinstance(_type, ArrayOfType):
+            return ArrayOfType(self.type_to_class(_type.type_))
+
+        if isinstance(_type, Type) and _type.name in self.classes:
+            return self.classes[_type.name]
+
+        return _type
 
     def parse(self, directory: Path, clean_path: Path):
         """
@@ -103,9 +106,7 @@ class ProjectManager:
         """
         for result in self.results:
             for class_ in result.results:
-                # TODO : Create DocArticle
-                # contents = DocArticle(class_, result.clean_path.parent).to_contents()
-                contents: List[Content] = []
+                contents: List[Content] = DocArticle(class_, result.clean_path.parent).to_contents()
 
                 (self.out_directory / result.clean_path.parent).mkdir(parents=True, exist_ok=True)
                 with open(self.out_directory / result.clean_path.parent /

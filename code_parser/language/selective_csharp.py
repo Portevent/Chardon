@@ -73,6 +73,9 @@ class SelectiveCSharpParser(Parser):
                 res: Class | Field = _parse_block(block)
             except ParsingError as e:
                 raise e
+            except NotImplementedError as e:
+                logging.warning(e)
+                continue
             except Exception as e:
                 raise ParsingError(str(e), line=block.comment + "\n" + block.declaration) from e
 
@@ -155,10 +158,18 @@ class SelectiveCSharpParser(Parser):
                 # We reached the end of the declaration
                 if '{' in line:
                     current_declaration += line.split('{')[0]  # Get the name before the line
+                    inside_code = False
+
+                # We reached the end of the declaration
+                if ';' in line:
+                    current_declaration += line.split(';')[0]  # Get the name before the line
+                    inside_code = False
+
+                # If we are no longer inside declaration (we hit either { or ;)
+                if not inside_code:
                     blocks.append(Block(current_comment, current_declaration))
 
                     # Reset value
-                    inside_code = False
                     current_comment = ""
                     current_declaration = ""
 
