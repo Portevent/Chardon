@@ -1,4 +1,4 @@
-![GitHub manifest version](https://img.shields.io/github/manifest-json/v/Portevent/Portevent-Comments2Documentation)
+![Version](https://img.shields.io/badge/dynamic/json?url=https%3A%2F%2Fraw.githubusercontent.com%2Fportevent%2FPortevent-Comments2Documentation%2Fmain%2FVERSION.json&query=%24.version)
 ![Lint](https://github.com/Portevent/Portevent-Comments2Documentation/actions/workflows/pylint.yml/badge.svg)
 ![GitHub License](https://img.shields.io/github/license/Portevent/Portevent-Comments2Documentation)
 
