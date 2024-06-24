@@ -1,4 +1,4 @@
-![Version](https://img.shields.io/badge/dynamic/json?url=https%3A%2F%2Fraw.githubusercontent.com%2FPortevent%2FChardon%2Fmain%2FVERSION.json&query=%24.version&label=Version)
+![Version](https://img.shields.io/badge/dynamic/toml?url=https%3A%2F%2Fraw.githubusercontent.com%2FPortevent%2FChardon%2Fmain%2Fpyproject.toml&query=%24.version)
 ![Lint](https://github.com/Portevent/Chardon/actions/workflows/pylint.yml/badge.svg)
 ![GitHub License](https://img.shields.io/github/license/Portevent/Chardon)
 
