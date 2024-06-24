@@ -1,5 +1,6 @@
-![Version](https://img.shields.io/badge/dynamic/json?url=https%3A%2F%2Fraw.githubusercontent.com%2Fportevent%2FPortevent-Comments2Documentation%2Fmain%2FVERSION.json&query=%24.version)
+![GitHub manifest version](https://img.shields.io/github/manifest-json/v/Portevent/Portevent-Comments2Documentation)
 ![Lint](https://github.com/Portevent/Portevent-Comments2Documentation/actions/workflows/pylint.yml/badge.svg)
+![GitHub License](https://img.shields.io/github/license/Portevent/Portevent-Comments2Documentation)
 
 # 🌷 Chardon
 
@@ -9,8 +10,8 @@ But it can handle much more complex task, such as parsing a project code, extrac
 
 ## Format
 ![Done](https://img.shields.io/badge/Done-green)
-![Doing](https://img.shields.io/badge/Doing-green)
-![Todo](https://img.shields.io/badge/Todo-green)
+![Doing](https://img.shields.io/badge/Doing-yellow)
+![Todo](https://img.shields.io/badge/Todo-red)
 ### Inputs
 - ![C#](https://img.shields.io/badge/C%23-green) : Will parse any properly commented Class, function or field
 - ![Markdown](https://img.shields.io/badge/Markdown-yellow) : Partially implemented
