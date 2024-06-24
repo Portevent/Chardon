@@ -1,6 +1,6 @@
-![Version](https://img.shields.io/badge/dynamic/json?url=https%3A%2F%2Fraw.githubusercontent.com%2FPortevent%2FPortevent-Comments2Documentation%2Fmain%2FVERSION.json&query=%24.version&label=Version)
-![Lint](https://github.com/Portevent/Portevent-Comments2Documentation/actions/workflows/pylint.yml/badge.svg)
-![GitHub License](https://img.shields.io/github/license/Portevent/Portevent-Comments2Documentation)
+![Version](https://img.shields.io/badge/dynamic/json?url=https%3A%2F%2Fraw.githubusercontent.com%2FPortevent%2FChardon%2Fmain%2FVERSION.json&query=%24.version&label=Version)
+![Lint](https://github.com/Portevent/Chardon/actions/workflows/pylint.yml/badge.svg)
+![GitHub License](https://img.shields.io/github/license/Portevent/Chardon)
 
 # 🌷 Chardon
 
@@ -15,12 +15,12 @@ But it can handle much more complex task, such as parsing a project code, extrac
 ### Inputs
 - ![C#](https://img.shields.io/badge/C%23-green) : Will parse any properly commented Class, function or field
 - ![Markdown](https://img.shields.io/badge/Markdown-yellow) : Partially implemented
-- ![Python](https://img.shields.io/badge/Markdown-red) : Will be working on soon
+- ![Python](https://img.shields.io/badge/Python-red) : Will be working on soon
 - More format may be implemented in the future as the project growth and proposal are prioritized
 
 ### Outputs
 - ![Markdown](https://img.shields.io/badge/Markdown-green) : Fully implemented
-- ![Obsidian](https://img.shields.io/badge/ObsidianMarkdown-yellow) : Fully implemented
+- ![Obsidian](https://img.shields.io/badge/ObsidianMarkdown-green) : Fully implemented
 - ![Basic HTML](https://img.shields.io/badge/Basic_HTML-red) : Will be working on soon
 - ![Advanced HTML](https://img.shields.io/badge/Advanced_HTML-red) : Will be working on soon on a css-stylized HTML
 - More format may be implemented in the future as the project growth and proposal are prioritized
