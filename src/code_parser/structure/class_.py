@@ -6,7 +6,7 @@ Note : the file is named class_ so that it doesn't confuse Python
 from enum import Enum, auto
 from typing import List
 
-from src.code_parser.structure.field import Field, Visibility
+from src.code_parser.structure.field import Field, Scope
 from src.code_parser.structure.type import Type
 
 
@@ -27,7 +27,7 @@ class Class(Type):
 
     # pylint: disable=too-many-arguments
     def __init__(self, name: str, fields: List[Field] = None, comment: str = "",
-                 visibility: Visibility = Visibility.PUBLIC,
+                 scope: Scope = Scope.PUBLIC,
                  inherits: List[Type] = None, variant: ClassVariant = ClassVariant.NONE,
                  attributes: dict = None):
         """
@@ -35,7 +35,7 @@ class Class(Type):
         @param name: name
         @param fields: fields
         @param comment: comment
-        @param visibility: Scope of the class
+        @param scope: Scope of the class
         @param inherits: inherits from classes or type
         @param variant: customize class to be a struct or enum
         @param attributes: custom attributes
@@ -43,7 +43,7 @@ class Class(Type):
         super().__init__(name, inherits)
         self.name = name
         self.fields = fields
-        self.visibility = visibility
+        self.scope = scope
         self.comment = comment
         self.variant = variant
         self.attributes = attributes or {}

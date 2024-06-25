@@ -2,11 +2,11 @@
 from typing import List
 
 from src.article_builder.content.content import Content
-from src.article_builder.parser.text_parser import TextParser
+from src.content_parser.text_parser import ContentParser
 
 
 # pylint: disable=too-few-public-methods
-class NoParser(TextParser):
+class NoParser(ContentParser):
     """
     Simple language that just return text as is
     """
@@ -15,4 +15,4 @@ class NoParser(TextParser):
         """
         Return text without parsing
         """
-        return [Content.Text(self._text)]
+        return [Content.Text('\n'.join(self._text))]

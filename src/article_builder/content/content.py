@@ -4,7 +4,7 @@ Structure normalisation of information
 from enum import Enum, auto, Flag
 from typing import List
 
-from src.article_builder.parser.text_parser import TextParser
+from src.content_parser.text_parser import ContentParser
 
 
 class ContentType(Enum):
@@ -109,7 +109,7 @@ class Content:
     Eg : it will store title, and not <h2>...</h2> or ## ...
     """
 
-    parser: type[TextParser]  # Need to be set at runtime, to specify which class to use as Parser
+    parser: type[ContentParser]  # Need to be set at runtime, to specify which class to use as Parser
 
     def __init__(self, content_type: ContentType, attributes: dict):
         self.type = content_type
@@ -132,7 +132,7 @@ class Content:
         else:
             raise AttributeError(f'Trying to fit a children inside a {self.type} content')
 
-    def add_row(self, row: 'Content'):
+    def add_row(self, row: TableRow):
         """
         Insert a row inside the content
         (only if the content is from a type that can holds rows)

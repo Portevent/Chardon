@@ -12,6 +12,8 @@ class Function:
     Store a Function, with Parameters
     """
 
+    outputs: List[Parameter]
+
     def __init__(self, inputs: List[Parameter] = None, outputs: List[Parameter] = None, ):
         """
         Init Function

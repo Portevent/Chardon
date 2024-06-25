@@ -3,7 +3,7 @@ import re
 from typing import List
 
 from src.article_builder.content.content import Content, TextStyle
-from src.article_builder.parser.text_parser import TextParser
+from src.content_parser.text_parser import ContentParser
 
 
 class MarkdownParserBuffer:
@@ -32,7 +32,7 @@ class MarkdownParserBuffer:
         self.underscore_counter = 0
 
 
-class MarkdownParser(TextParser):
+class MarkdownParser(ContentParser):
     """
     Parse Markdown strings into Content
     """
@@ -57,6 +57,7 @@ class MarkdownParser(TextParser):
     def __init__(self, text: str):
         super().__init__(text)
         self._buffer = MarkdownParserBuffer()
+        self._current_text = ""
         self._enum = None
         self._enum_index = 0
         self._contents: List[Content] = []
@@ -66,13 +67,13 @@ class MarkdownParser(TextParser):
         Set the text to be parsed
         @param text: new text
         """
-        self._text = text
+        self._current_text = text
 
     def _start_enum_text(self):
         """
         Setup the enumerator at the beginning of the text
         """
-        self._enum = enumerate(self._text)
+        self._enum = enumerate(self._current_text)
         self._enum_index = 0
 
     def _enum_text(self) -> (int, str):
@@ -105,16 +106,22 @@ class MarkdownParser(TextParser):
             self._enum_text()
 
     def parse(self) -> List[Content]:
-        self._start_enum_text()
-        self._contents = []
-        self._buffer.reset()
+        sections: List[Content] = []
 
-        self._parse()
+        for text in self._text:
+            # Set text to be parsed
+            self.set_text(text)
+            self._start_enum_text()
+            self._contents = []
+            self._buffer.reset()
 
-        return self._contents
+            self._parse()
+            sections.append(Content.Section(self._contents))
+
+        return sections
 
     def _match(self, regex: str):
-        res = re.match(regex, self._text[self._enum_index:], re.S)
+        res = re.match(regex, self._current_text[self._enum_index:], re.S)
         if res is None:
             return {}, -1
 

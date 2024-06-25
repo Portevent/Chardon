@@ -3,13 +3,16 @@ from abc import ABC, abstractmethod
 from typing import List
 
 
-class TextParser(ABC):
+class ContentParser(ABC):
     """
     Parse a text into content
     """
 
-    def __init__(self, text: str):
-        self._text = text
+    def __init__(self, text: str | List[str]):
+        if isinstance(text, str):
+            self._text = [text]
+        else:
+            self._text = text
 
     @abstractmethod
     def parse(self) -> List['Content']:
@@ -22,4 +25,4 @@ class TextParser(ABC):
         """
         Return text
         """
-        return self._text
+        return "\n".join(self._text)

@@ -7,7 +7,7 @@ from src.code_parser.structure.function import Function
 from src.code_parser.structure.type import Type
 
 
-class Visibility(Enum):
+class Scope(Enum):
     """
     Score of a field
     """
@@ -23,21 +23,21 @@ class Field:
     """
 
     # pylint: disable=too-many-arguments
-    def __init__(self, name: str, _type: Type | Function, visibility: Visibility, comment: str = "",
+    def __init__(self, name: str, _type: Type | Function, scope: Scope, comment: str = "",
                  default_value: str = "",
                  attributes: dict = None):
         """
         Init a Field
         @param name: name
         @param _type: Can be Type or a Function
-        @param visibility: Scope
+        @param scope: Scope
         @param comment: Comment
         @param default_value: Default value
         @param attributes: custom attributes
         """
         self.name = name
         self.type = _type
-        self.visibility = visibility
+        self.scope = scope
         self.comment = comment
         self.default_value = default_value
         self.attributes = attributes or {}

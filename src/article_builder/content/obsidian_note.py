@@ -5,9 +5,9 @@ from typing import List
 from src.article_builder.content.content import Content
 
 
-class ObsidianNote:
+class HeaderAndContent:
     """
-    Meta Content to store the basis of an ObsidianNote
+    Meta Content to store the basis of a document :
     metadata (Header) and the article itself (Contents)
     """
     def __init__(self):

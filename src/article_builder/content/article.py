@@ -4,24 +4,16 @@ Basic Article
 from typing import List
 
 from src.article_builder.content.content import Content
-from src.article_builder.content.obsidian_note import ObsidianNote
+from src.article_builder.content.obsidian_note import HeaderAndContent
 
 
-class Article(ObsidianNote):
+class Article(HeaderAndContent):
     """
-    Meta Content to store a basic Article layout, containing slug metadata and table of content
+    Meta Content to store a basic Article layout, with table of content
     """
     def __init__(self):
         super().__init__()
         self.table_of_contents: Content = Content.List([])
-        self.header.attributes['slug'] = ''
-
-    def set_slug(self, slug: str):
-        """
-        Set the slug of the Article
-        @param slug: slug
-        """
-        self.header.attributes['slug'] = slug
 
     def add_content(self, content, create_link=False):
         """

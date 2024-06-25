@@ -1,3 +1,4 @@
+# pylint: disable=line-too-long
 """
 C# Parser
 """
@@ -5,29 +6,70 @@ import logging
 import re
 from typing import List
 
+import regex
+
 from src.code_parser.language.parser import ParsingError
 from src.code_parser.structure.array_of_type import ArrayOfType
 from src.code_parser.structure.class_ import Class, ClassVariant
-from src.code_parser.structure.field import Visibility, Field
+from src.code_parser.structure.dict_of_type import DictOfType
+from src.code_parser.structure.field import Scope, Field
 from src.code_parser.structure.function import Function
 from src.code_parser.structure.parameter import Parameter
+from src.code_parser.structure.specific_type import SpecificType
 from src.code_parser.structure.type import Type
 
 SCOPES = {
-    'public': Visibility.PUBLIC,
-    'protected': Visibility.PROTECTED,
-    'private': Visibility.PRIVATE,
+    'public': Scope.PUBLIC,
+    'protected': Scope.PROTECTED,
+    'private': Scope.PRIVATE,
 }
+# Parse
+# [Serializable] public static class AnimationManager
+# private static List<(int startIdx, int endIdx)> _blockTextIdxs = new List<(int startIdx, int endIdx)>(128);
+# public static void AddAnimation(AnimationData animationData)
+# into [attribute(s)] [declaration] : [inheritance(s)] for classes
+# into [attribute(s)] [declaration]([parameters]) for functions
+# into [attribute(s)] [declaration] [= default_value] for fields
+BLOCK_REGEX = r'(?P<attributes>\[.*\])? ?(?P<declaration>(?:(?P<type>[\w ]+(<\(?(?&type) ?,? ?(?&type)?\)?>)?))+)+(\((?P<parameters>[^;]*)\))?(?P<inheritance> ?: ?[^=;]+)?( ?= ?(?P<default_value>[^;]+))?'
 
-BLOCK_REGEX = r'(?P<attributes>\[.*\])? ?(?P<declaration>[\w \[\]\<\>]+[\w]) ?:? ?' \
-              r'(?P<parameters>\([^;]*\))?(?P<inheritance>[^=;]+)?=?(?P<default_value>[^;]*)'
+# Parse string with one or multiple attribute(s)
+# [Attribute A] [Attribute B] [Attribute <C,dE>]
+# into a list of each
 ATTRIBUTE_REGEX = r'\[(?P<attribute>.*?)\]'
+
+# Parse class inheritance(s)
+# Vehicle, Animal, Person (as in "class Transformer : Vehicle, Animal, Person")
+# Into a list of class inherited
 INHERIT_REGEX = r'(?P<inherit>\w+)'
-PARAMETER_REGEX = r'(?P<modificator>in |out |ref readonly |ref )?' \
-                  r'(?P<is_list>List\<)?(?P<type>[\w<>\[\]]+?)>? ' \
-                  r'(?P<name>\w+) ?=? ?(?P<def_value> ?[\w\'\"<>\{\}]+)?'
+
+# Parse one or multiple attributes
+# out Dictionary<Type, List<int>> s_InterfaceEventSystemEvents = null, List<GUIContent> s_PossibleEvents = null, Coordinate coordinate, in Pattern pattern, int minRange, A<B<C, D>, E> variable_tricky = C<A, B>
+# Into a list of each of them
+# [modificator] [type] [name] [= default_value]
+PARAMETER_REGEX = r'(?P<modificator>in |out |ref readonly |ref )?(?P<type>[\w]+?(?P<inside_type>\<.*?\>)? )?>?(?P<name>\w+) ?(?P<def_value>= ?[\w\'\"\{\}]+(?P<inside_def_value>\<.*?\>)?)?'
+
+# Parse comment
+#     /// <summary>
+#     /// Queue a new animation
+#     /// </summary>
+#     /// <param name="animationData">AnimationData to queue</param>
+# Into a list of each of them
+# <[tag] [params]>Content</[tag]>
 COMMENT_REGEX = r'<(?P<name>\w+)(?P<params>[^>]*)>(?P<content>.*?)<\/(?P=name)>'
+
+# Parse params in tag comment
+# to="AnimationData" toLabel="Queue of"
+# (as in /// <link to="AnimationData" toLabel="Queue of">Process</link>)
+# Into a list of each of them
+# [key] = "[value]"
 COMMENT_TAG_ATTRIBUTES_REGEX = r'(?P<key>[\w\-\_]+) ?= ?(?P<quote>[\'\"])(?P<value>.+?)(?P=quote)'
+
+# Parse a type
+# int
+# List<int>
+# Type<A<B, C<E>>, D>
+# Into their name and specification (List<int> -> name=List | type1=int)
+TYPE_REGEX = r'(?P<type>(?P<name>\w+)(?P<specification><(?&type) ?,? ?(?&type)?>)?)'
 
 MODIFIERS = [
     'abstract',
@@ -44,7 +86,7 @@ MODIFIERS = [
     'unsafe',
     'virtual',
     'volatile',
-]
+]  # NOTE : Is internal or partial missing ?
 
 
 # pylint: disable=too-few-public-methods
@@ -91,21 +133,44 @@ def _parse_inheritance(text: str) -> List[Type]:
     return [Type(inherit) for inherit in re.findall(INHERIT_REGEX, text)]
 
 
+def _parse_type(text: str) -> Type:
+    """
+    Parse a string into a Type
+    @param text: input
+    @return: Type
+    """
+    _, name, specification = regex.match(TYPE_REGEX, text).groups()
+
+    if specification is not None:
+        if name == "Dictionary":
+            key, value = [match[0] for match in regex.findall(TYPE_REGEX, specification)]
+            return DictOfType(key, value)
+        if name == "List":
+            return ArrayOfType(_parse_type(specification))
+
+        specifics = [match[0] for match in regex.findall(TYPE_REGEX, specification)]
+        return SpecificType(Type(name), specifics[0] or None, specifics[1] or None)
+    return Type(name)
+
+
 def _parse_parameter(text: str) -> List[Parameter]:
     """
-    Parse text to a list of Parameter
+    Parse text to Parameters
     @param text: Input
-    @return: List of Parameter
+    @return: Parameters
     """
-    modificator: str
-    is_list: str
-    _type: str
-    name: str
-    def_value: str
-    return [Parameter(name, [Type(_type) if is_list is None else ArrayOfType(Type(_type))], "",
-                      default_value=def_value if def_value != "" else None,
-                      attributes={'modificator': modificator})
-            for modificator, is_list, _type, name, def_value in re.findall(PARAMETER_REGEX, text)]
+    parameters: List[Parameter] = []
+    for modification, raw_type, _, name, def_value, _ in re.findall(PARAMETER_REGEX, text):
+
+        attributes: dict[str: str] = {}
+        if modification != "":
+            attributes['modification'] = modification
+
+        _type: Type = _parse_type(raw_type)
+        parameters.append(Parameter(name, [_type], "", default_value=def_value if def_value != "" else None,
+                                    attributes=attributes))
+
+    return parameters
 
 
 def _parse_comment_tag(text: str) -> dict:
@@ -150,7 +215,7 @@ def _parse_comment(text: str) -> dict:
     return {k: v for k, v in attributes.items() if v}
 
 
-def _find_scope(keywords: List[str], pop: bool = True) -> (Visibility, List[str]):
+def _find_scope(keywords: List[str], pop: bool = True) -> (Scope, List[str]):
     """
     Find the score keyword among a list
     @param keywords: List of keywords
@@ -185,13 +250,13 @@ def _clean_line(line: str) -> str:
 # pylint: disable=too-many-locals
 def _parse_declaration(declaration):
     """
-    Parse declaration into a field name, a field visibility, modifiers and keywords
+    Parse declaration into a field name, a field scope, modifiers and keywords
     @param declaration:
-    @return: name, visibility, List of keywords
+    @return: name, scope, modifiers, List of keywords
     """
     keywords = declaration.split(' ')
     name: str = keywords.pop()
-    visibility, keywords = _find_scope(keywords)
+    scope, keywords = _find_scope(keywords)
 
     # Class or Function modifier are specific tag before a name, such as static or abstract
     modifiers: List[str] = []
@@ -200,13 +265,13 @@ def _parse_declaration(declaration):
             keywords.remove(modifier)
             modifiers.append(modifier)
 
-    return name, visibility, modifiers, keywords
+    return name, scope, modifiers, keywords
 
 
 def _parse_block(block: Block) -> Class | Field:
     declaration: str = block.declaration
     declaration.replace('\n', ' ')
-    parts: dict = re.match(BLOCK_REGEX, declaration).groupdict()
+    parts: dict = regex.match(BLOCK_REGEX, declaration).groupdict()
 
     attributes: dict = _parse_comment(block.comment)
 
@@ -216,10 +281,10 @@ def _parse_block(block: Block) -> Class | Field:
     parameters: List[Parameter] = _parse_parameter(parts['parameters'] or "")
 
     name: str
-    visibility: Visibility
+    scope: Scope
     modifiers: List[str]
     keywords: List[str]
-    name, visibility, modifiers, keywords = _parse_declaration(parts['declaration'])
+    name, scope, modifiers, keywords = _parse_declaration(parts['declaration'])
 
     if len(modifiers) > 0:
         attributes['modifiers'] = modifiers
@@ -230,20 +295,20 @@ def _parse_block(block: Block) -> Class | Field:
     if 'class' in keywords:
         keywords.remove('class')
 
-        result = Class(name, [], "", visibility, inheritance, attributes=attributes)
+        result = Class(name, [], "", scope, inheritance, attributes=attributes)
 
     # Is a Struct
     elif 'struct' in keywords:
         keywords.remove('struct')
 
-        result = Class(name, [], "", visibility,
+        result = Class(name, [], "", scope,
                        [], ClassVariant.STRUCT, attributes=attributes)
 
     # Is an Enum
     elif 'enum' in keywords:
         keywords.remove('enum')
 
-        result = Class(name, [], "", visibility,
+        result = Class(name, [], "", scope,
                        [], ClassVariant.ENUM, attributes=attributes)
 
     # Is a Function
@@ -260,10 +325,10 @@ def _parse_block(block: Block) -> Class | Field:
 
         function = Function(parameters, return_types)
 
-        result = Field(name, function, visibility, attributes=attributes)
+        result = Field(name, function, scope, attributes=attributes)
 
     else:
-        result = Field(name, Type(keywords.pop()), visibility, attributes=attributes)
+        result = Field(name, Type(keywords.pop()), scope, attributes=attributes)
 
     if len(keywords) > 0:
         logging.warning("%s has unkown keywords : %s, will be ignored", result, keywords)

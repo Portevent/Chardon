@@ -10,8 +10,10 @@ from src.article_builder.content.article import Article
 from src.article_builder.content.content import Content, TableRow, TextStyle
 from src.article_builder.exporter.osbidian_flavored_markdown_exporter import ObsidianCalloutType
 from src.code_parser.language.csharp import TagComment
+from src.code_parser.structure.array_of_type import ArrayOfType
 from src.code_parser.structure.class_ import Class, ClassVariant
 from src.code_parser.structure.field import Field
+from src.code_parser.structure.function import Function
 from src.code_parser.structure.type import Type
 
 SUMMARY_MAX_SIZE = 100
@@ -37,22 +39,25 @@ def find_summary(field: Field) -> str:
         if 'summary' in field.attributes['comments']:
             tag = field.attributes['comments']['summary']
             if len(tag.content) > SUMMARY_MAX_SIZE:
-                logging.warning(f"Summary of {field.name} is a too long : {len(tag.content)}")
+                logging.warning("Summary of %s is a too long : %s", field.name, len(tag.content))
             return tag.content
 
-    logging.error(f"Summary of {field.name} is missing")
+    logging.error("Summary of %s is missing", field.name)
     return "*missing summary*"
 
 
-def link_to_type(type_: Type | str) -> Content:
+def link_to_type(type_: Type | Class) -> Content:
     """
     Convert type to link
     @param type_: Type
     @return: Content
     """
-    if isinstance(type_, str):
-        return Content.FromText(type_)
-    return Content.Link(type_.name, type_.name)
+    if isinstance(type_, Class):
+        return Content.Link(type_.name, type_.name)
+    if isinstance(type_, ArrayOfType):
+        return Content.Span([link_to_type(type_.type_), Content.FromText("[]")])
+
+    return Content.FromText(type_.name)
 
 
 class DocArticle(Article):
@@ -68,12 +73,12 @@ class DocArticle(Article):
 
         self.set_metadata('title', self.class_.name)
         self.set_metadata('path', str(path))
-        self.set_metadata('visibility', str(self.class_.visibility))
+        self.set_metadata('scope', str(self.class_.scope))
+        self.add_tag("class")
+        self.add_alias(beautiful_class_name(self.class_.name))
+
         if self.class_.variant != ClassVariant.NONE:
             self.set_metadata('variant', str(self.class_.variant))
-
-        self.add_alias(beautiful_class_name(self.class_.name))
-        self.add_tag("class")
 
         # Class modificator, such as [Serializable'] or @Data are called attributes
         # This is a bit confusing as the dict holding customisations is called the same
@@ -81,6 +86,7 @@ class DocArticle(Article):
         if 'attributes' in self.class_.attributes:
             self.set_metadata('attributes', self.class_.attributes['attributes'])
 
+        # Parse class comments
         for type, comment in self.class_.attributes.get('comments', {}).items():
             match type:
                 case 'summary':
@@ -90,11 +96,12 @@ class DocArticle(Article):
                         Content.QuoteText(comment.content,
                                           attributes={'callout': ObsidianCalloutType.INFO}))
                 case _:
-                    self.presentation.add_children(Content.QuoteText(comment.content,
-                                                                     attributes={
-                                                                         'callout': ObsidianCalloutType.INFO,
-                                                                         'callout-title': type
-                                                                     }))
+                    self.presentation.add_children(
+                        Content.QuoteText(comment.content,
+                                          attributes={
+                                              'callout': ObsidianCalloutType.INFO,
+                                              'callout-title': type
+                                          }))
 
         for field in self.class_.fields:
             self.add_field(field)
@@ -107,24 +114,28 @@ class DocArticle(Article):
             Content.FromText(summary)
         ]))
 
-        field_head: Content = Content.Span([
-            Content.Title(field.name, level=2)
-        ])
-
+        # Field name
+        field_title: Content = Content.Title(field.name, level=2)
+        # Return type of function or type of Field
         field_type: Content = Content.Span([], TextStyle.BOLD)
-
-        # TODO Fixme
-        # if isinstance(field.type, Function):
-        #     field_type.add_children(Content.Span([
-        #         link_to_type(output.type) for output in field.type.outputs
-        #     ], attributes={'separator': ' '}))
-        # else:
-        #     field_type.add_children(link_to_type(field.type))
-
-        field_head.add_children(Content.Span([
-            Content.Span([Content.FromText(field.visibility.name)], TextStyle.ITALIC),
+        # Field scope (public, private, protected)
+        field_scope: Content = Content.Span([Content.FromText(field.scope.name)], TextStyle.ITALIC)
+        field_subtitle: Content = Content.Span([
+            field_scope,
             field_type
-        ], attributes={'separator': ' '}))
+        ], attributes={'separator': ' '})
+
+        if isinstance(field.type, Function):
+            field_type.add_children(Content.Span([
+                Content.Span([
+                    link_to_type(_type) for _type in output.types
+                ], attributes={'separator': ' or '}) for output in field.type.outputs
+            ], attributes={'separator': ' | '}))
+        else:
+            field_type.add_children(link_to_type(field.type))
+
+        # Head of the field, Title
+        field_head: Content = Content.Span([field_title, field_subtitle])
 
         self.add_content(field_head)
         self.add_content(Content.FromText(summary))
