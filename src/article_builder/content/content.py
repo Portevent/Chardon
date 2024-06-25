@@ -109,7 +109,8 @@ class Content:
     Eg : it will store title, and not <h2>...</h2> or ## ...
     """
 
-    parser: type[ContentParser]  # Need to be set at runtime, to specify which class to use as Parser
+    # Need to be set at runtime, to specify which class to use as Parser
+    parser: type[ContentParser]
 
     def __init__(self, content_type: ContentType, attributes: dict):
         self.type = content_type

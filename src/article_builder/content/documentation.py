@@ -9,7 +9,6 @@ from typing import List
 from src.article_builder.content.article import Article
 from src.article_builder.content.content import Content, TableRow, TextStyle
 from src.article_builder.exporter.osbidian_flavored_markdown_exporter import ObsidianCalloutType
-from src.code_parser.language.csharp import TagComment
 from src.code_parser.structure.array_of_type import ArrayOfType
 from src.code_parser.structure.class_ import Class, ClassVariant
 from src.code_parser.structure.field import Field
@@ -34,7 +33,6 @@ def find_summary(field: Field) -> str:
     @param field: Field
     @return: Summary
     """
-    comment: TagComment
     if 'comments' in field.attributes:
         if 'summary' in field.attributes['comments']:
             tag = field.attributes['comments']['summary']
@@ -87,8 +85,8 @@ class DocArticle(Article):
             self.set_metadata('attributes', self.class_.attributes['attributes'])
 
         # Parse class comments
-        for type, comment in self.class_.attributes.get('comments', {}).items():
-            match type:
+        for _type, comment in self.class_.attributes.get('comments', {}).items():
+            match _type:
                 case 'summary':
                     self.presentation.add_children(Content.FromText(comment.content))
                 case 'remarks':
@@ -100,13 +98,17 @@ class DocArticle(Article):
                         Content.QuoteText(comment.content,
                                           attributes={
                                               'callout': ObsidianCalloutType.INFO,
-                                              'callout-title': type
+                                              'callout-title': _type
                                           }))
 
         for field in self.class_.fields:
             self.add_field(field)
 
     def add_field(self, field: Field):
+        """
+        Add a class field in the article
+        @param field: Field
+        """
         summary: str = find_summary(field)
 
         self.table_of_content.add_row(TableRow([
