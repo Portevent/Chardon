@@ -44,18 +44,61 @@ def find_summary(field: Field) -> str:
     return "*missing summary*"
 
 
-def link_to_type(type_: Type | Class) -> Content:
+def type_representation(type_: Type | Class) -> Content:
     """
-    Convert type to link
+    Convert type to str, or link to their Class
     @param type_: Type
     @return: Content
     """
     if isinstance(type_, Class):
-        return Content.Link(type_.name, type_.name)
+        return Content.Link(type_.name, type_.attributes['uri'])
     if isinstance(type_, ArrayOfType):
-        return Content.Span([link_to_type(type_.type_), Content.FromText("[]")])
+        return Content.Span([type_representation(type_.type_), Content.FromText("[]")])
+    if isinstance(type_, DictOfType):
+        return Content.Span([
+            Content.FromText('Dict{'),
+            type_representation(type_.key),
+            Content.FromText(' : '),
+            type_representation(type_.value),
+            Content.FromText('}')
+        ])
+    if isinstance(type_, SpecificType):
+        span: Content = Content.Span([
+            type_representation(type_.type_),
+            Content.FromText('<'),
+            type_representation(type_.specific1),
+        ])
 
-    return Content.FromText(type_.name)
+        if type_.specific2 is not None:
+            span.add_children(Content.FromText(', '))
+            span.add_children(type_representation(type_.specific2))
+
+
+        span.add_children(Content.FromText('>'))
+
+        return span
+
+    return type_.name
+
+
+def param_representation(params: Parameter) -> Content:
+    """
+    Represent a Parameter to a list of their possible types
+    @param params: Parameter
+    @return: List of Content
+    """
+    return Content.Span([
+            type_representation(type_) for type_ in params.types
+        ], attributes={'separator': ' or '})
+
+
+def param_list_representation(params: List[Parameter]) -> Content:
+    """
+    Represent a list of params
+    @param params: Params
+    @return: List of Content
+    """
+    return Content.Span([param_representation(param) for param in params], attributes={'separator': ' | '})
 
 
 class DocArticle(Article):
@@ -85,8 +128,8 @@ class DocArticle(Article):
             self.set_metadata('attributes', self.class_.attributes['attributes'])
 
         # Parse class comments
-        for _type, comment in self.class_.attributes.get('comments', {}).items():
-            match _type:
+        for type_, comment in self.class_.attributes.get('comments', {}).items():
+            match type_:
                 case 'summary':
                     self.presentation.add_children(Content.FromText(comment.content))
                 case 'remarks':
@@ -98,12 +141,69 @@ class DocArticle(Article):
                         Content.QuoteText(comment.content,
                                           attributes={
                                               'callout': ObsidianCalloutType.INFO,
-                                              'callout-title': _type
+                                              'callout-title': type_
                                           }))
 
         for field in self.class_.fields:
             self.add_field(field)
 
+    def _get_field_types(self, field: Field) -> Content:
+        """
+        Convert field types to Contents
+        @param field: Field
+        @return Content
+        """
+
+        if isinstance(field.type, Function):
+            return param_list_representation(field.outputs)
+        
+        return type_representation(field.type)
+
+    def _get_field_head(self, field: Field) -> Content:
+        """
+        Return the head of a field representation
+        @param field: Field
+        @return: Content
+        """
+        # Field name
+        field_title: Content = Content.Title(field.name, level=2)
+        # Return type of function or type of Field
+        field_type: Content = Content.Span([self._get_field_types(field)], TextStyle.BOLD)
+        # Field scope (public, private, protected)
+        field_scope: Content = Content.Span([Content.FromText(field.scope.name)], TextStyle.ITALIC)
+
+        return Content.Span([field_title, Content.Span([
+            field_scope,
+            field_type
+        ], attributes={'separator': ' '})])
+
+    def _get_default_value(self, field: Field) -> Content:
+        """
+        Return the representation of a field's default value
+        @param field: Field
+        @return: Content
+        """
+
+        return Content.FromText(f"Default value : {field.default_value}")
+
+    def _get_function_inputs(self, function: Function) -> Content:
+        """
+        Return the representation of a function's inputs
+        @param function: Function
+        @return: Content
+        """
+        table = Content.Table(["Name", "Type", "Description"], [])
+
+        param: Parameter
+        for param in function.inputs:
+            table.add_row(TableRow([
+                Content.FromText(param.name),
+                param_representation(param),
+                Content.FromText("Not Implemented")
+            ]))
+            
+        return table
+    
     def add_field(self, field: Field):
         """
         Add a class field in the article
@@ -111,36 +211,21 @@ class DocArticle(Article):
         """
         summary: str = find_summary(field)
 
+        # Add entry to table of content
         self.table_of_content.add_row(TableRow([
             Content.InternalLink(field.name),
             Content.FromText(summary)
         ]))
 
-        # Field name
-        field_title: Content = Content.Title(field.name, level=2)
-        # Return type of function or type of Field
-        field_type: Content = Content.Span([], TextStyle.BOLD)
-        # Field scope (public, private, protected)
-        field_scope: Content = Content.Span([Content.FromText(field.scope.name)], TextStyle.ITALIC)
-        field_subtitle: Content = Content.Span([
-            field_scope,
-            field_type
-        ], attributes={'separator': ' '})
+        self.add_content(self._get_field_head(field))
+        self.add_content(Content.FromText(summary))
+
+        if field.default_value != None:
+            self.add_content(self._get_default_value(field))
 
         if isinstance(field.type, Function):
-            field_type.add_children(Content.Span([
-                Content.Span([
-                    link_to_type(_type) for _type in output.types
-                ], attributes={'separator': ' or '}) for output in field.type.outputs
-            ], attributes={'separator': ' | '}))
-        else:
-            field_type.add_children(link_to_type(field.type))
+            self.add_content(self._get_function_inputs(field))
 
-        # Head of the field, Title
-        field_head: Content = Content.Span([field_title, field_subtitle])
-
-        self.add_content(field_head)
-        self.add_content(Content.FromText(summary))
 
     def to_contents(self) -> List[Content]:
         """

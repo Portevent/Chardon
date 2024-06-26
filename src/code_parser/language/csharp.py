@@ -166,8 +166,8 @@ def _parse_parameter(text: str) -> List[Parameter]:
         if modification != "":
             attributes['modification'] = modification
 
-        _type: Type = _parse_type(raw_type)
-        parameters.append(Parameter(name, [_type], "", default_value=def_value if def_value != "" else None,
+        type_: Type = _parse_type(raw_type)
+        parameters.append(Parameter(name, [type_], "", default_value=def_value if def_value != "" else None,
                                     attributes=attributes))
 
     return parameters
