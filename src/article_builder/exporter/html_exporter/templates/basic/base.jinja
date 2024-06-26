@@ -1,0 +1,12 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        {% block head %}
+        {% endblock %}
+    </head>
+    <body>
+        {% for content in article.to_contents() %}
+            {% include "content.jinja" %}
+        {% endfor %}
+    </body>
+</html>
