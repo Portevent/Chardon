@@ -4,26 +4,32 @@ Basic Article
 from typing import List
 
 from src.article_builder.content.content import Content
-from src.article_builder.content.obsidian_note import HeaderAndContent
+from src.article_builder.content.summary.list_table_of_content import ListTableOfContent
+from src.article_builder.content.summary.abc_table_of_content import TableOfContentABC
 
 
-class Article(HeaderAndContent):
+class Article:
     """
-    Meta Content to store a basic Article layout, with table of content
+    Meta Content to store the basis of an article :
+    metadata (Header), summary (TableOfContent) and the article itself (Contents)
     """
+    TABLE_OF_CONTENT: type[TableOfContentABC] = ListTableOfContent
+
     def __init__(self):
-        super().__init__()
-        self.table_of_contents: Content = Content.List([])
+        self.header: Content = Content.Header({
+            'title': '',
+            'aliases': [],
+            'tags': []
+        })
+        self.table_of_contents = self.TABLE_OF_CONTENT()
+        self.contents: list[Content] = []
 
-    def add_content(self, content, create_link=False):
+    def add_content(self, content):
         """
         Add Content to the Article
         @param content: Content
-        @param create_link: Add a link in the summary (default is False)
         """
-        self.content.append(content)
-        if create_link:
-            self.table_of_contents.add_children(Content.InternalLink(content.attributes['text']))
+        self.contents.append(content)
 
     def to_contents(self) -> List[Content]:
         """
@@ -31,5 +37,33 @@ class Article(HeaderAndContent):
         Used to export it afterward
         @return: List of Contents
         """
-        return [self.header, Content.Title("Table of contents :"),
-                self.table_of_contents, Content.Separator()] + self.content
+        return [self.header] + self.table_of_contents.get_contents() + self.contents
+
+    def set_title(self, title: str):
+        """
+        Set the title of the note
+        @param title: title
+        """
+        self.header.attributes['title'] = title
+
+    def add_alias(self, alias: str):
+        """
+        Add alias to the note
+        @param alias: alias
+        """
+        self.header.attributes['aliases'].append(alias)
+
+    def add_tag(self, tag: str):
+        """
+        Add tag to the note
+        @param tag: tag
+        """
+        self.header.attributes['tags'].append(tag)
+
+    def set_metadata(self, key: str, value):
+        """
+        Set custom metadata
+        @param key: Key
+        @param value: Value
+        """
+        self.header.attributes[key] = value

@@ -30,12 +30,21 @@ SCOPES = {
 # into [attribute(s)] [declaration] : [inheritance(s)] for classes
 # into [attribute(s)] [declaration]([parameters]) for functions
 # into [attribute(s)] [declaration] [= default_value] for fields
-BLOCK_REGEX = r'(?P<attributes>\[.*\])? ?(?P<declaration>(?:(?P<type>[\w ]+(<\(?(?&type) ?,? ?(?&type)?\)?>)?))+)+(\((?P<parameters>[^;]*)\))?(?P<inheritance> ?: ?[^=;]+)?( ?= ?(?P<default_value>[^;]+))?'
+BLOCK_REGEX = r'(?P<attributes>\[.*\])? ?(?P<declaration>(?:(?<keyword>[\w]+(<(((?&keyword) ?,? ?(?&keyword)?)|(\([\w ,]+\)))>)?(\[\])?) ?)+)(\((?P<parameters>[^;]*)\))?(?P<inheritance> ?: ?[^=;]+)?( ?= ?(?P<default_value>[^;]+))?'
 
 # Parse string with one or multiple attribute(s)
 # [Attribute A] [Attribute B] [Attribute <C,dE>]
 # into a list of each
 ATTRIBUTE_REGEX = r'\[(?P<attribute>.*?)\]'
+
+# Parse a declaration into keywords
+# public static class AnimationManager
+# private static List<(int startIdx, int endIdx)> _blockTextIdxs
+# public static List<A> AddAnimation
+# public static st<A, C> AddAnimation
+# For instance, the List<...> in the 2nd example must be parsed as one big keyword
+# Each of this example has 4 keywords, but they may have more or less
+DECLARATION_REGEX = r'(?<keyword>[\w]+(<(((?&keyword) ?,? ?(?&keyword)?)|(\([\w ,]+\)))>)?)'
 
 # Parse class inheritance(s)
 # Vehicle, Animal, Person (as in "class Transformer : Vehicle, Animal, Person")
@@ -46,7 +55,7 @@ INHERIT_REGEX = r'(?P<inherit>\w+)'
 # out Dictionary<Type, List<int>> s_InterfaceEventSystemEvents = null, List<GUIContent> s_PossibleEvents = null, Coordinate coordinate, in Pattern pattern, int minRange, A<B<C, D>, E> variable_tricky = C<A, B>
 # Into a list of each of them
 # [modificator] [type] [name] [= default_value]
-PARAMETER_REGEX = r'(?P<modificator>in |out |ref readonly |ref )?(?P<type>[\w]+?(?P<inside_type>\<.*?\>)? )?>?(?P<name>\w+) ?(?P<def_value>= ?[\w\'\"\{\}]+(?P<inside_def_value>\<.*?\>)?)?'
+PARAMETER_REGEX = r'(?P<modificator>in |out |ref readonly |ref )?(?P<type>[\w]+?(?P<inside_type>\<.*?\>)? )?>?(?P<name>\w+) ?(?P<def_value>= ?[\w\-\'\"\{\}]+(?P<inside_def_value>\<.*?\>)?)?'
 
 # Parse comment
 #     /// <summary>
@@ -248,13 +257,13 @@ def _clean_line(line: str) -> str:
 
 
 # pylint: disable=too-many-locals
-def _parse_declaration(declaration):
+def _parse_declaration(declaration: str) -> [str, str, str, List[str]]:
     """
     Parse declaration into a field name, a field scope, modifiers and keywords
     @param declaration:
     @return: name, scope, modifiers, List of keywords
     """
-    keywords = declaration.split(' ')
+    keywords = [result[0] for result in regex.findall(DECLARATION_REGEX, declaration)]
     name: str = keywords.pop()
     scope, keywords = _find_scope(keywords)
 
@@ -328,7 +337,7 @@ def _parse_block(block: Block) -> Class | Field:
         result = Field(name, function, scope, attributes=attributes)
 
     else:
-        result = Field(name, Type(keywords.pop()), scope, attributes=attributes)
+        result = Field(name, Type(keywords.pop()), scope, default_value=parts['default_value'], attributes=attributes)
 
     if len(keywords) > 0:
         logging.warning("%s has unkown keywords : %s, will be ignored", result, keywords)

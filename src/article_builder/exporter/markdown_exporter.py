@@ -1,6 +1,7 @@
 """
 implementation of export content to Markdown
 """
+import logging
 from enum import Enum, auto
 from typing import List
 
@@ -69,10 +70,27 @@ class MarkdownContentExport(ContentExport):
     # Default extension to use
     PREFERRED_EXTENSION: str = ".md"
     BREAKLINE: MarkdownContentBreaklineType = MarkdownContentBreaklineType.TRAILING_WHITESPACE
+    BREAKLINE_IN_TABLE: str = None
 
     def __init__(self, params: dict = None):
         super().__init__(params)
         self.params['break_line_type'] = MarkdownContentExport.BREAKLINE
+
+    def sanitize_table_element(self, element: str) -> str:
+        """
+        Sanitize table element
+        Breakline will raise error, but may be replace with some char if supported by custom MD env
+        @param element: element
+        @return: clean element
+        """
+        if '\n' in element:
+            if self.BREAKLINE_IN_TABLE is None:
+                logging.warning("Table element contains \\n, which is unsupported in %s : %s",
+                                self.__class__.__name__,
+                                element.replace("\n", '\\n'))
+            element = element.replace("\n", self.BREAKLINE_IN_TABLE or ' ')
+
+        return element.replace("|", "\|")  # Note : can be replaced with &#124;
 
     def set_break_line_type(self, new_type: MarkdownContentBreaklineType):
         """
@@ -197,9 +215,9 @@ class MarkdownContentExport(ContentExport):
                 )
 
             case ContentType.IMAGE:
-                title = f" {content.attributes['title']}"\
+                title = f" {content.attributes['title']}" \
                     if 'title' in content.attributes else ""
-                size = f"|{content.attributes['size']}"\
+                size = f"|{content.attributes['size']}" \
                     if 'size' in content.attributes else ""
 
                 exported_content = f"![{content.attributes['alt']}{size}" \
@@ -214,20 +232,23 @@ class MarkdownContentExport(ContentExport):
                                    f" {content.attributes['text']}\n"
 
             case ContentType.TABLE:
-                exported_content = joins(
-                    [self._export(head).replace("|", "&#124;") for head in
-                     content.attributes['headers']],
-                    before="| ", after=" |\n", between_each=" | "
-                )
+                headers: List[str] = [self.sanitize_table_element(self._export(head)) for head in
+                                      content.attributes['headers']]
 
+                # Export header
+                exported_content = joins(headers, before="\n| ", after=" |\n", between_each=" | ")
+
+                # Export --- below header
                 exported_content += joins(
                     ["---" for _ in content.attributes['headers']],
                     before="| ", after=" |\n", between_each=" | "
                 )
 
+                # Export rows
                 for row in content.attributes['rows']:
                     exported_content += joins(
-                        [self._export(cell.content).replace("|", "\|") for cell in row.cells],
+                        [self.sanitize_table_element(self._export(cell.content))
+                         for cell in row.cells],
                         before="| ", after=" |\n", between_each=" | "
                     )
 
@@ -236,7 +257,7 @@ class MarkdownContentExport(ContentExport):
                     exported_content = f"[[{content.attributes['text']}]]"
                 else:
                     exported_content = f"[{content.attributes['text']}]" \
-                                       f"({content.attributes['target'].replace(' ', '%20')})"
+                                       f"({str(content.attributes['target']).replace(' ', '%20')})"
 
             case _:
                 raise NotImplementedError(f'Type {content.type} is not implemented'

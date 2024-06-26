@@ -8,6 +8,8 @@ from typing import List
 
 from src.article_builder.content.article import Article
 from src.article_builder.content.content import Content, TableRow, TextStyle
+from src.article_builder.content.summary.abc_table_of_content import TableOfContentABC
+from src.article_builder.content.summary.table_table_of_content import TableTableOfContent
 from src.article_builder.exporter.osbidian_flavored_markdown_exporter import ObsidianCalloutType
 from src.code_parser.structure.array_of_type import ArrayOfType
 from src.code_parser.structure.dict_of_type import DictOfType
@@ -41,6 +43,9 @@ def find_summary(field: Field) -> str:
             tag = field.attributes['comments']['summary']
             if len(tag.content) > SUMMARY_MAX_SIZE:
                 logging.warning("Summary of %s is a too long : %s", field.name, len(tag.content))
+            if '\n' in tag.content:
+                logging.warning("Summary of %s contains more than one line."
+                                " It may lead to incorrect formatting", field.name)
             return tag.content
 
     logging.error("Summary of %s is missing", field.name)
@@ -54,7 +59,8 @@ def type_representation(type_: Type | Class) -> Content:
     @return: Content
     """
     if isinstance(type_, Class):
-        return Content.Link(type_.name, type_.attributes['uri'])
+        return Content.Link(type_.name, type_.attributes['uri'],
+                            attributes={'link_to_another_page': True})
     if isinstance(type_, ArrayOfType):
         return Content.Span([type_representation(type_.type_), Content.FromText("[]")])
     if isinstance(type_, DictOfType):
@@ -76,12 +82,11 @@ def type_representation(type_: Type | Class) -> Content:
             span.add_children(Content.FromText(', '))
             span.add_children(type_representation(type_.specific2))
 
-
         span.add_children(Content.FromText('>'))
 
         return span
 
-    return type_.name
+    return Content.FromText(type_.name)
 
 
 def param_representation(params: Parameter) -> Content:
@@ -91,8 +96,8 @@ def param_representation(params: Parameter) -> Content:
     @return: List of Content
     """
     return Content.Span([
-            type_representation(type_) for type_ in params.types
-        ], attributes={'separator': ' or '})
+        type_representation(type_) for type_ in params.types
+    ], attributes={'separator': ' or '})
 
 
 def param_list_representation(params: List[Parameter]) -> Content:
@@ -106,31 +111,131 @@ def param_list_representation(params: List[Parameter]) -> Content:
         attributes={'separator': ' | '})
 
 
+def _get_field_types(field: Field) -> Content:
+    """
+    Convert field types to Contents
+    @param field: Field
+    @return Content
+    """
+    span: Content
+    if isinstance(field.type, Function):
+        if len(field.type.outputs) == 0:
+            return Content.Span([])
+        span = param_list_representation(field.type.outputs)
+    else:
+        span = type_representation(field.type)
+    span.attributes['style'] = TextStyle.BOLD
+    return span
+
+
+def _get_default_value(field: Field) -> Content:
+    """
+    Return the representation of a field's default value
+    @param field: Field
+    @return: Content
+    """
+    if field.default_value != "":
+        return Content.Title(f"= {field.default_value}", 6)
+    return Content.Span([])
+
+
+def _get_field_head(field: Field) -> Content:
+    """
+    Return the head of a field representation
+    @param field: Field
+    @return: Content
+    """
+    # Field name
+    field_title: Content = Content.Title(field.name, level=2)
+    # Return type of function or type of Field
+    field_type: Content = _get_field_types(field)
+    # Field scope (public, private, protected)
+    field_scope: Content = Content.Span([Content.FromText(field.scope.name)], TextStyle.ITALIC)
+
+    field_default_value: Content = _get_default_value(field)
+
+    return Content.Span([field_title, field_default_value, Content.Span([
+        field_scope,
+        field_type
+    ], attributes={'separator': ' '})])
+
+
+def _get_function_inputs(function: Function, params_comment: dict[str: str]) -> Content:
+    """
+    Return the representation of a function's inputs
+    @param function: Function
+    @return: Content
+    """
+    table = Content.Table(["Inputs", "Type", "Description"], [])
+
+    param: Parameter
+    for param in function.inputs:
+        if param.name not in params_comment:
+            raise DocumentationError(f"missing {param.name} documentation")
+
+        table.add_row(TableRow([
+            Content.FromText(param.name),
+            param_representation(param),
+            Content.FromText(params_comment[param.name])
+        ]))
+
+    return table
+
+
+def heritage_to_content(inherits: List[Type]) -> Content:
+    """
+    Export herited class to content
+    @param inherits: heritage
+    @return: Content
+    """
+    return Content.Span([
+        Content.FromText("Herits from : "),
+        Content.Span([
+            type_representation(type_) for type_ in inherits
+        ], attributes={'separator': ', '})
+    ], TextStyle.BOLD)
+
+
+class DocumentationError(Exception):
+    """
+    Error in the documentation, such as missing comment
+    """
+
+    def __init__(self, message: str):
+        self.message = message
+
+    def __str__(self):
+        return f'{self.message}'
+
+
 class DocArticle(Article):
     """
     Generate an Article from a Class
     """
+    TABLE_OF_CONTENT: type[TableOfContentABC] = TableTableOfContent
 
     def __init__(self, class_: Class, path: Path):
         super().__init__()
         self.class_ = class_
         self.presentation = Content.Section([])
-        self.table_of_content = Content.Table(['Name', 'Description'], [])
 
         self.set_metadata('title', self.class_.name)
         self.set_metadata('path', str(path))
-        self.set_metadata('scope', str(self.class_.scope))
+        self.set_metadata('scope', str(self.class_.scope.name))
         self.add_tag("class")
         self.add_alias(beautiful_class_name(self.class_.name))
 
         if self.class_.variant != ClassVariant.NONE:
-            self.set_metadata('variant', str(self.class_.variant))
+            self.set_metadata('variant', str(self.class_.variant.name))
 
         # Class modificator, such as [Serializable'] or @Data are called attributes
         # This is a bit confusing as the dict holding customisations is called the same
         # So we get class attributes from customisation
         if 'attributes' in self.class_.attributes:
             self.set_metadata('attributes', self.class_.attributes['attributes'])
+
+        if len(self.class_.inherits) > 0:
+            self.presentation.add_children(heritage_to_content(self.class_.inherits))
 
         # Parse class comments
         for type_, comment in self.class_.attributes.get('comments', {}).items():
@@ -142,71 +247,19 @@ class DocArticle(Article):
                         Content.QuoteText(comment.content,
                                           attributes={'callout': ObsidianCalloutType.INFO}))
                 case _:
-                    self.presentation.add_children(
-                        Content.QuoteText(comment.content,
-                                          attributes={
-                                              'callout': ObsidianCalloutType.INFO,
-                                              'callout-title': type_
-                                          }))
+                    pass
+                    # self.presentation.add_children(
+                    #     Content.QuoteText(comment.content,
+                    #                       attributes={
+                    #                           'callout': ObsidianCalloutType.INFO,
+                    #                           'callout-title': type_
+                    #                       }))
 
         for field in self.class_.fields:
-            self.add_field(field)
-
-    def _get_field_types(self, field: Field) -> Content:
-        """
-        Convert field types to Contents
-        @param field: Field
-        @return Content
-        """
-
-        if isinstance(field.type, Function):
-            return param_list_representation(field.outputs)
-        return type_representation(field.type)
-
-    def _get_field_head(self, field: Field) -> Content:
-        """
-        Return the head of a field representation
-        @param field: Field
-        @return: Content
-        """
-        # Field name
-        field_title: Content = Content.Title(field.name, level=2)
-        # Return type of function or type of Field
-        field_type: Content = Content.Span([self._get_field_types(field)], TextStyle.BOLD)
-        # Field scope (public, private, protected)
-        field_scope: Content = Content.Span([Content.FromText(field.scope.name)], TextStyle.ITALIC)
-
-        return Content.Span([field_title, Content.Span([
-            field_scope,
-            field_type
-        ], attributes={'separator': ' '})])
-
-    def _get_default_value(self, field: Field) -> Content:
-        """
-        Return the representation of a field's default value
-        @param field: Field
-        @return: Content
-        """
-
-        return Content.FromText(f"Default value : {field.default_value}")
-
-    def _get_function_inputs(self, function: Function) -> Content:
-        """
-        Return the representation of a function's inputs
-        @param function: Function
-        @return: Content
-        """
-        table = Content.Table(["Name", "Type", "Description"], [])
-
-        param: Parameter
-        for param in function.inputs:
-            table.add_row(TableRow([
-                Content.FromText(param.name),
-                param_representation(param),
-                Content.FromText("Not Implemented")
-            ]))
-
-        return table
+            try:
+                self.add_field(field)
+            except DocumentationError as e:
+                logging.error("Error at %s.%s : %s", class_.name, field.name, e)
 
     def add_field(self, field: Field):
         """
@@ -216,20 +269,13 @@ class DocArticle(Article):
         summary: str = find_summary(field)
 
         # Add entry to table of content
-        self.table_of_content.add_row(TableRow([
-            Content.InternalLink(field.name),
-            Content.FromText(summary)
-        ]))
+        self.table_of_contents.add_entry(field.name, field.name, summary)
 
-        self.add_content(self._get_field_head(field))
+        self.add_content(_get_field_head(field))
         self.add_content(Content.FromText(summary))
 
-        if field.default_value is not None:
-            self.add_content(self._get_default_value(field))
-
-        if isinstance(field.type, Function):
-            self.add_content(self._get_function_inputs(field))
-
+        if isinstance(field.type, Function) and len(field.type.inputs) > 0:
+            self.add_content(_get_function_inputs(field.type, field.attributes.get('params', {})))
 
     def to_contents(self) -> List[Content]:
         """
@@ -237,5 +283,5 @@ class DocArticle(Article):
         Used to export it afterward
         @return: List of Contents
         """
-        return [self.header, self.presentation, Content.Separator(), Content.Title("Summary :"),
-                self.table_of_content, Content.Separator()] + self.content
+        return [self.header, self.presentation, Content.Separator()] \
+               + self.table_of_contents.get_contents() + self.contents

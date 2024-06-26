@@ -98,7 +98,7 @@ class ProjectManager:
                 res = ParsingResult(path, clean_path / path.name, self.parser.parse(path))
                 for class_ in res.results:
                     self.classes[class_.name] = class_
-                    self.classes[class_.name].attributes['uri'] = clean_path
+                    self.classes[class_.name].attributes['uri'] = clean_path / class_.name
                 self.results.append(res)
 
     def export(self):
