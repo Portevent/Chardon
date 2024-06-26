@@ -33,6 +33,7 @@ class ObsidianFlavoredMarkdownContentExport(MarkdownContentExport):
     """
     Export Content To Obsidian Flavored Markdown
     """
+    BREAKLINE_IN_TABLE: str = "<br>"
 
     def _list_entry_export(self, entry: Content, ordered: bool = False, index: int = 0) -> str:
         """
@@ -89,6 +90,9 @@ class ObsidianFlavoredMarkdownContentExport(MarkdownContentExport):
 
                     if 'embed' in content.attributes and content.attributes['embed']:
                         exported_content = '!' + exported_content
+
+                elif content.attributes.get('link_to_another_page', False):
+                    exported_content = f"[[{content.attributes['text']}]]"
 
                 else:
                     return super()._export(content)

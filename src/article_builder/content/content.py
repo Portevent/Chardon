@@ -343,15 +343,17 @@ class Content:
         return Content(ContentType.LINK, attr)
 
     @staticmethod
-    def InternalLink(text: str, attributes: dict = None) -> 'Content':
+    def InternalLink(text: str, target: str = None, attributes: dict = None) -> 'Content':
         """
         Create a Link Content that is internal and only has text by default
         @param text: Text
+        @param target: Text (will be set to text if not specified)
         @param attributes: optional custom attributes
         @return: Link Content
         """
         attr = attributes or {}
-        attr['target'] = text
+        attr['text'] = text
+        attr['target'] = target or text
         attr['internal-link'] = True
         return Content(ContentType.LINK, attr)
 

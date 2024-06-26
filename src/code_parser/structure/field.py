@@ -23,20 +23,20 @@ class Field:
     """
 
     # pylint: disable=too-many-arguments
-    def __init__(self, name: str, _type: Type | Function, scope: Scope, comment: str = "",
+    def __init__(self, name: str, type_: Type | Function, scope: Scope, comment: str = "",
                  default_value: str = "",
                  attributes: dict = None):
         """
         Init a Field
         @param name: name
-        @param _type: Can be Type or a Function
+        @param type_: Can be Type or a Function
         @param scope: Scope
         @param comment: Comment
         @param default_value: Default value
         @param attributes: custom attributes
         """
         self.name = name
-        self.type = _type
+        self.type = type_
         self.scope = scope
         self.comment = comment
         self.default_value = default_value

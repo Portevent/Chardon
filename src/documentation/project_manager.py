@@ -69,20 +69,20 @@ class ProjectManager:
                     for param in field.type.outputs:
                         param.types = list(map(self.type_to_class, param.types))
 
-    def type_to_class(self, _type: Type) -> Type:
+    def type_to_class(self, type_: Type) -> Type:
         """
         Try to convert str-type to Class-type from known class
-        @param _type: Type, which can be expressed as str
+        @param type_: Type, which can be expressed as str
         @return: Corresponding Class if known
         """
 
-        if isinstance(_type, ArrayOfType):
-            return ArrayOfType(self.type_to_class(_type.type_))
+        if isinstance(type_, ArrayOfType):
+            return ArrayOfType(self.type_to_class(type_.type_))
 
-        if isinstance(_type, Type) and _type.name in self.classes:
-            return self.classes[_type.name]
+        if isinstance(type_, Type) and type_.name in self.classes:
+            return self.classes[type_.name]
 
-        return _type
+        return type_
 
     def parse(self, directory: Path, clean_path: Path):
         """
@@ -98,6 +98,7 @@ class ProjectManager:
                 res = ParsingResult(path, clean_path / path.name, self.parser.parse(path))
                 for class_ in res.results:
                     self.classes[class_.name] = class_
+                    self.classes[class_.name].attributes['uri'] = clean_path / class_.name
                 self.results.append(res)
 
     def export(self):
