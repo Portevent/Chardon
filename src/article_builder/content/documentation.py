@@ -10,9 +10,12 @@ from src.article_builder.content.article import Article
 from src.article_builder.content.content import Content, TableRow, TextStyle
 from src.article_builder.exporter.osbidian_flavored_markdown_exporter import ObsidianCalloutType
 from src.code_parser.structure.array_of_type import ArrayOfType
+from src.code_parser.structure.dict_of_type import DictOfType
+from src.code_parser.structure.specific_type import SpecificType
 from src.code_parser.structure.class_ import Class, ClassVariant
 from src.code_parser.structure.field import Field
 from src.code_parser.structure.function import Function
+from src.code_parser.structure.parameter import Parameter
 from src.code_parser.structure.type import Type
 
 SUMMARY_MAX_SIZE = 100
@@ -98,7 +101,9 @@ def param_list_representation(params: List[Parameter]) -> Content:
     @param params: Params
     @return: List of Content
     """
-    return Content.Span([param_representation(param) for param in params], attributes={'separator': ' | '})
+    return Content.Span(
+        [param_representation(param) for param in params],
+        attributes={'separator': ' | '})
 
 
 class DocArticle(Article):
@@ -156,7 +161,6 @@ class DocArticle(Article):
 
         if isinstance(field.type, Function):
             return param_list_representation(field.outputs)
-        
         return type_representation(field.type)
 
     def _get_field_head(self, field: Field) -> Content:
@@ -201,9 +205,9 @@ class DocArticle(Article):
                 param_representation(param),
                 Content.FromText("Not Implemented")
             ]))
-            
+
         return table
-    
+
     def add_field(self, field: Field):
         """
         Add a class field in the article
@@ -220,7 +224,7 @@ class DocArticle(Article):
         self.add_content(self._get_field_head(field))
         self.add_content(Content.FromText(summary))
 
-        if field.default_value != None:
+        if field.default_value is not None:
             self.add_content(self._get_default_value(field))
 
         if isinstance(field.type, Function):
