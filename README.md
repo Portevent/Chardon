@@ -36,4 +36,26 @@ But it can handle much more complex task, such as parsing a project code, extrac
 Chardon won't be published as Github Action until it reach its first stable release
 
 ### PyPI
-Chardon won't be published on PyPI until it reach its first stable release
+Install Chardon with pip
+```shell
+pip install chardon
+```
+
+Example code
+```python
+from pathlib import Path
+from chardon import CSharpParser, ObsidianFlavoredMarkdownContentExport, ProjectManager
+
+# Specify the path to my project and the output
+project = Path('path/to/project')
+out = Path('out/doc')
+
+# Select which parser to use
+parser = CSharpParser()
+# Select which language to export to
+exporter = ObsidianFlavoredMarkdownContentExport()
+
+# Parse all the file within project, and export them
+project_manager = ProjectManager(parser, exporter, project, out)
+project_manager.export()
+```

@@ -10,6 +10,7 @@ authors = [
 ]
 description = "Multipurpose tool to parse input file and generate documents. Useful to auto generate browsable documentation."
 readme = "README.md"
+license = { file = "LICENSE" }
 requires-python = ">=3.10"
 classifiers = [
     "Development Status :: 2 - Pre-Alpha",
@@ -17,6 +18,9 @@ classifiers = [
     "License :: OSI Approved :: MIT License",
     "Operating System :: OS Independent",
     "Topic :: Text Processing",
+]
+dependencies = [
+    "regex",
 ]
 
 [project.urls]
