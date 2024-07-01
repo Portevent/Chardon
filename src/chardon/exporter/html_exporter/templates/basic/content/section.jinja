@@ -1,0 +1,5 @@
+{% for children in content['children'] %}
+    {% with content=children %}
+        {% include "content.jinja" %} <\br>
+    {% endwith %}
+{% endfor %}

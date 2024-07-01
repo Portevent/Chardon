@@ -2,3 +2,4 @@
 from .content_export import ContentExport
 from .markdown_exporter import MarkdownContentBreaklineType, MarkdownContentExport
 from .osbidian_flavored_markdown_exporter import ObsidianFlavoredMarkdownContentExport
+from .html_exporter import *
