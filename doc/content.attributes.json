@@ -1,0 +1,71 @@
+{
+    "SECTION" : {
+        "children": "Content inside",
+        "class?": "String of classes for style specificiation. E.G. \"my-class function-title\""
+    },
+    "HEADER" : {
+        "<any>": "Header may have many attributes, and are heavly depend on the expected output"
+    },
+    "TEXT" : {
+        "text": "Text inside it",
+        "class?": "String of classes for style specificiation. E.G. \"my-class function-title\""
+    },
+    "SPAN" : {
+        "style": "Basic style formating enum : Bold, Italic, both, none",
+        "children": "Content inside",
+        "class?": "String of classes for style specificiation. E.G. \"my-class function-title\"",
+        "separator?": "String used between each element of the span ('' by default)"
+    },
+    "TITLE" : {
+        "level": "Int specifying the level of this title, starting at 1",
+        "text": "Title itself",
+        "class?": "String of classes for style specificiation. E.G. \"my-class function-title\""
+    },
+    "LIST" : {
+        "ordered": "Boolean for the type of list",
+        "children": "Content of type LIST_ENTRY",
+        "type?": "This character attribute indicates the numbering type: [a: lowercase letters|A: uppercase letters|i: lowercase Roman numerals|I: uppercase Roman numerals|1: numbers]",
+        "class?": "String of classes for style specificiation. E.G. \"my-class function-title\""
+    },
+    "LIST_ENTRY" : {
+        "level": "Int specifying the indent of the entry, starting at 1",
+        "entry": "Content inside the entry",
+        "type?": "This character attribute __override__ the numbering type: [a: lowercase letters|A: uppercase letters|i: lowercase Roman numerals|I: uppercase Roman numerals|1: numbers]",
+        "class?": "String of classes for style specificiation. E.G. \"my-class function-title\"",
+        "completed?": "Boolean. If set, entry will appear as completable, and will be checked or uncheck depending on the value of the bool"
+    },
+    "QUOTE" : {
+        "quote": "Content within the quote",
+        "author?": "String for the author of the quote",
+        "date?": "String for the date of the quote",
+        "location?": "String for the location of the quote",
+        "class?": "String of classes for style specificiation. E.G. \"my-class function-title\""
+    },
+    "CODE" : {
+        "language" : "Specify a language for syntaxic coloration",
+        "text" : "Code itself"
+    },
+    "SEPARATOR" : {
+
+    },
+    "TABLE" : {
+        "headers": "List of Contents for each column head",
+        "rows": "List of TableRow"
+    },
+    "IMAGE" : {
+        "alt": "Alt text",
+        "uri": "Link to the ressource (can be an URL)",
+        "title?": "String for the title",
+        "size?": "Size of the image",
+        "link?": "Link this image point toward (when clicking on it)"
+    },
+    "LINK" : {
+        "internal-link?": "Boolean, False by default. If True, means this link points to something within the page",
+        "text": "Text",
+        "target": "Target of the link",
+        "alt?": "Alt text"
+    },
+    "COMMENT" : {
+        "text": "Text"
+    }
+}

@@ -1,0 +1,8 @@
+<div class="quote {{content.attributes.get('class', '')}}">
+    {% with content=content.attributes['quote'] %}
+        {% include "content.jinja" %}
+    {% endwith %}
+    {{content.attributes.get('author', '')}}
+    {{content.attributes.get('date', '')}}
+    {{content.attributes.get('location', '')}}
+</div>

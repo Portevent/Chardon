@@ -1,0 +1,7 @@
+<div class="{{content.attributes.get('class', '')}}">
+{% for children in content.attributes['children'] %}
+    {% with content=children %}
+        {% include "content.jinja" %} <\br>
+    {% endwith %}
+{% endfor %}
+</div>

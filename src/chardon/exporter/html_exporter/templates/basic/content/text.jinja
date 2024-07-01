@@ -1,0 +1,6 @@
+{% extends "p.jinja" %}
+{% block paragraph %}
+<span class="text {{content.attributes.get('class', '')}}">
+    {{content.attributes['text']}}
+</span>
+{% endblock %}

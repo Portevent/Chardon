@@ -1,0 +1,10 @@
+{% extends "p.jinja" %}
+{% block paragraph %}
+<span class="span {{content.attributes.get('class', '')}}">
+    {% for children in content.attributes['children'] %}
+        {% with content=children %}
+            {% include "content.jinja" %} <\br>
+        {% endwith %}
+    {% endfor %}{{ children.attribute.get('separator', '') }}
+</span>
+{% endblock %}

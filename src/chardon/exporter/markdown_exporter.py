@@ -136,6 +136,9 @@ class MarkdownContentExport(ContentExport):
                 )
 
             case ContentType.LIST_ENTRY:
+                # Note : List already export them,
+                # so this code will only be used for
+                # list entries outside list
                 exported_content = "    " * content.attributes['level'] + \
                                    self._export(content.attributes['entry'])
 

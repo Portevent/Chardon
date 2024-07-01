@@ -1,0 +1,6 @@
+{% set list-type = content.attributes.get('type', list-type)}
+<li class="list-entry {{content.attributes.get('class', '')}}" type="{{list-type}}">
+    {% with content=content.attributes['entry'] %}
+        {% include "content.jinja" %}
+    {% endwith %}
+</li>

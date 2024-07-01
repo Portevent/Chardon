@@ -1,0 +1,10 @@
+{% if inside_paragraph %}
+        {% block paragraph %}
+        {% endblock %}
+{%else}
+    {% set inside_paragraph = True %}
+    <p>
+        {% block paragraph %}
+        {% endblock %}
+    </p>
+{%endif%}
