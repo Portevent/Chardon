@@ -1,3 +1,3 @@
-<h{{content['level']}}>
-    {{content['text']}}
-</h{{content['level']}}>
+<h{{content.attributes['level']}} class="title {{content.attributes.get('class', '')}}">
+    {{content.attributes['text']}}
+</h{{content.attributes['level']}}>

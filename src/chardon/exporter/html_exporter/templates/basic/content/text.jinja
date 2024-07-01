@@ -1,7 +1,6 @@
-{% if inside_paragraph %}
-    {{content['text']}}
-{%else}
-    <p>
-    {{content['text']}}
-    </p>
-{%endif%}
+{% extends "p.jinja" %}
+{% block paragraph %}
+<span class="text {{content.attributes.get('class', '')}}">
+    {{content.attributes['text']}}
+</span>
+{% endblock %}

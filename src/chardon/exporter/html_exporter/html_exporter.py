@@ -4,9 +4,8 @@ implementation of export content to Markdown
 from enum import Enum, auto
 from typing import List
 
-from src.article_builder.content import ContentType, Content, TextStyle
-from src.article_builder.exporter import ContentExport
-
+from chardon.article_builder.content import ContentType, TextStyle, Content
+from chardon.exporter import ContentExport
 
 class HTMLContentExport(ContentExport):
     """

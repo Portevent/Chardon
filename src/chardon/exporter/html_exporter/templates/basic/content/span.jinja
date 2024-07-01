@@ -1,15 +1,10 @@
-{% if inside_paragraph %}
-    {% for children in content['children'] %}
+{% extends "p.jinja" %}
+{% block paragraph %}
+<span class="span {{content.attributes.get('class', '')}}">
+    {% for children in content.attributes['children'] %}
         {% with content=children %}
             {% include "content.jinja" %} <\br>
         {% endwith %}
-    {% endfor %}
-{%else%}
-    <p>
-        {% for children in content['children'] %}
-            {% with content=children, inside_paragraph = True %}
-                {% include "content.jinja" %} <\br>
-            {% endwith %}
-        {% endfor %}{{ children.attribute['separator'] if 'separator' in children.attribute else '' }}
-    </p>
-{%endif%}
+    {% endfor %}{{ children.attribute.get('separator', '') }}
+</span>
+{% endblock %}

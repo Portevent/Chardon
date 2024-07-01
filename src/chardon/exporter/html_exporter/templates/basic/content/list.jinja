@@ -1,0 +1,9 @@
+{% set list-tag = 'ol' if content.attributes.get('ordered', True) else 'ul'}
+{% set list-type = content.attributes.get('type', '1')}
+<{{list-tag}} class="list {{content.attributes.get('class', '')}}" type="{{list-type}}">
+    {% for children in content.attributes['children'] %}
+        {% with content=children %}
+            {% include "content.jinja" %}
+        {% endwith %}
+    {% endfor %}
+</{{list-tag}}>
