@@ -3,6 +3,10 @@
 ![Lint](https://github.com/Portevent/Chardon/actions/workflows/pylint.yml/badge.svg)
 ![GitHub License](https://img.shields.io/github/license/Portevent/Chardon)
 
+> ⚠ This version is pre-alpha, meaning it may drasticly change over time  
+> Feel free to install it and experiment with it, but do not engage it for long term use  
+> You can [star](https://github.com/Portevent/Chardon/stargazers) this repo and follow it to be notified for update 
+
 # 🌷 Chardon
 
 Chardon is a tool to parse input and generate documents.
