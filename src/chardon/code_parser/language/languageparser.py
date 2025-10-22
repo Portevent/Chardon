@@ -41,7 +41,7 @@ class LanguageParser(ABC):
         """
         with open(file, 'r', encoding=encoding) as f:
             try:
-                return self._parse(f.readlines())
+                return self._parse(f.readlines(), f.name)
             except ParsingError as e:
                 e.file = file.name
                 raise e
@@ -49,5 +49,5 @@ class LanguageParser(ABC):
                 print(f"Uncaught exception at {file}")
                 raise e
 
-    def _parse(self, lines: List[str]) -> List[Class]:
+    def _parse(self, lines: List[str], file: str) -> List[Class]:
         raise NotImplementedError

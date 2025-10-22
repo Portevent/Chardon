@@ -14,6 +14,7 @@ class Scope(Enum):
     PUBLIC = auto()
     PRIVATE = auto()
     PROTECTED = auto()
+    INTERNAL = auto()
 
 
 class Field:

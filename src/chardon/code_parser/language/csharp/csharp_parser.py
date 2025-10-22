@@ -60,8 +60,9 @@ class CSharpParser(LanguageParser):
     parsed in the file and the language read another 'class' somewhere else
     """
 
-    def _parse(self, lines: List[str]) -> List[Class]:
+    def _parse(self, lines: List[str], file: str) -> List[Class]:
         """
+        Parse the given lines into a list of Class
         """
         blocks: List[Block] = self._parse_raw_code(lines)
         classes: List[Class] = []
@@ -90,7 +91,7 @@ class CSharpParser(LanguageParser):
                 if current_class:
                     current_class.add_field(res)
                 else:
-                    raise ParsingError(message=f"We are parsing {res.name} outside of a class",
+                    raise ParsingError(message=f"A field {res.name} has been found, but outside of a serialized class at {file}",
                                        line=block.declaration)
 
         if current_class:

@@ -16,6 +16,11 @@ SCOPES = {
     'public': Scope.PUBLIC,
     'protected': Scope.PROTECTED,
     'private': Scope.PRIVATE,
+    'internal': Scope.INTERNAL,
+    'protected internal': Scope.PROTECTED,
+    'private protected': Scope.PRIVATE,
+    'internal protected': Scope.PROTECTED,
+    'protected private': Scope.PRIVATE,
 }
 # Parse
 # [Serializable] public static class AnimationManager
@@ -49,7 +54,7 @@ INHERIT_REGEX = r'(?P<inherit>\w+)'
 # out Dictionary<Type, List<int>> s_InterfaceEventSystemEvents = null, List<GUIContent> s_PossibleEvents = null, Coordinate coordinate, in Pattern pattern, int minRange, A<B<C, D>, E> variable_tricky = C<A, B>
 # Into a list of each of them
 # [modificator] [type] [name] [= default_value]
-PARAMETER_REGEX = r'(?P<modificator>in |out |ref readonly |ref )?(?P<type>[\w]+?(?P<inside_type>\<.*?\>)? )?>?(?P<name>\w+) ?(?P<def_value>= ?[\w\-\'\"\{\}]+(?P<inside_def_value>\<.*?\>)?)?'
+PARAMETER_REGEX = r'(?P<modificator>in |out |ref readonly |ref )?(?P<type>[\w\.]+?(?P<inside_type>\<.*?\>)?(?P<is_array>\[\])? )?>?(?P<name>\w+) ?(?P<def_value>= ?[\w\-\'\"\{\}]+(?P<inside_def_value>\<.*?\>)?)?'
 
 # Parse comment
 #     /// <summary>
@@ -142,7 +147,10 @@ def _parse_type(text: str) -> Type:
     @param text: input
     @return: Type
     """
-    _, name, specification = regex.match(TYPE_REGEX, text).groups()
+    match = regex.match(TYPE_REGEX, text)
+    if match is None:
+        raise Exception(f"Could not parse type {text}")
+    _, name, specification = match.groups()
 
     if specification is not None:
         if name == "Dictionary":
@@ -163,8 +171,7 @@ def _parse_parameter(text: str) -> List[Parameter]:
     @return: Parameters
     """
     parameters: List[Parameter] = []
-    for modification, raw_type, _, name, def_value, _ in re.findall(PARAMETER_REGEX, text):
-
+    for modification, raw_type, _, _, name, def_value, _ in re.findall(PARAMETER_REGEX, text):
         attributes: dict[str: str] = {}
         if modification != "":
             attributes['modification'] = modification
@@ -274,7 +281,11 @@ def _parse_declaration(declaration: str) -> [str, str, str, List[str]]:
 def _parse_block(block: Block) -> Class | Field:
     declaration: str = block.declaration
     declaration.replace('\n', ' ')
-    parts: dict = regex.match(BLOCK_REGEX, declaration).groupdict()
+
+    match = regex.match(BLOCK_REGEX, declaration)
+    if match is {}:
+        raise Exception(f"Invalid declaration : {block.declaration}")
+    parts: dict = match.groupdict()
 
     attributes: dict = _parse_comment(block.comment)
 
