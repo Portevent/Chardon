@@ -1,5 +1,6 @@
 from __future__ import annotations
-from typing import List, Dict
+from typing import List, Dict, Iterable
+
 
 class FileInput:
     data: any
@@ -19,16 +20,21 @@ class FileNode:
     parent: Self | None
     children: Dict[str, Self]
     key: str
+    path: str
 
     def __init__(self, data: any, key: str, parent: Self | None = None, children: Dict[str, Self] | None = None):
         self.data = data
         self.key = key
         self.parent = parent
         self.children = children or {}
+        self.path = (parent.path + "/") if parent and parent.path != "" else ""
+        self.path += key
 
     def add_child(self, child: Self):
         self.children[child.key] = child
         child.parent = self
+        child.path = self.path + "/" if self.path else ""
+        child.path += child.key
 
     def __repr__(self):
         return f"FileNode({self.parent.key if self.parent else '[root]'}->{self.key}->[{len(self.children)}])"
@@ -69,3 +75,10 @@ class FileTree:
 
     def add(self, file: FileInput):
         self.get_node(file.hierarchy, True).add_child(FileNode(file.data, file.key))
+
+    def get_all_nodes(self, from_node: FileNode | None = None) -> Iterable[FileNode]:
+        parent = from_node or self.root
+        yield parent
+
+        for child in parent.children.values():
+            yield from self.get_all_nodes(child)

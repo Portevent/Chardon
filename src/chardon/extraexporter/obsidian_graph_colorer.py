@@ -12,7 +12,13 @@ from colour import Color
 
 
 def rank_by_level(class_: Class) -> int:
-    return len(class_.attributes["uri"].parts)
+    return (len(class_.attributes["uri"].parts) * 26 * 26
+            + get_letter_position(class_) * 26 + get_letter_position(class_, 1))
+
+
+def get_letter_position(class_: Class, position: int = 0) -> int:
+    return ord(class_.attributes["uri"].parts[0][position]) - ord("A")
+
 
 class ClassNode:
     def __init__(self, class_: Class, color: Color | None = None):
@@ -55,6 +61,8 @@ class ObsidianGraphColorer(ExtraExporter):
         for child in node.children.values():
             if child.data:
                 child.data.color = Color(hsl=(hue, 1, 0.5))
+            else:
+                child.data = ClassNode(None, Color(hsl=(hue, 1, 0.5)))
 
             self.color_nodes(child, Color(hsl=(hue-self.get_hue_variation(level), 1, 0.5)), Color(hsl=(hue+self.get_hue_variation(level), 1, 0.5)), level + 1)
 
@@ -72,7 +80,7 @@ class ObsidianGraphColorer(ExtraExporter):
     def colour_to_int(self, color: Color) -> int:
         return (int(color.get_red() * 255) << 16) + (int(color.get_green() * 255) << 8) + int(color.get_blue() * 255)
 
-    def export(self, graph_file_path: Path) -> None:
+    def color_graph(self, graph_file_path: Path) -> None:
         with open(graph_file_path, "rb") as graph_file:
             config = json.loads(graph_file.read())
 
@@ -89,3 +97,23 @@ class ObsidianGraphColorer(ExtraExporter):
 
         with open(graph_file_path, "w") as graph_file:
             graph_file.write(json.dumps(config, indent=2))
+
+    def color_folders_files(self, data_file: Path):
+        with open(data_file, "rb") as data:
+            config = json.loads(data.read())
+
+        config['styles'] = {}
+        for fileNode in self.tree.get_all_nodes():
+            if fileNode.data is None:
+                continue
+
+            config['styles'][fileNode.path + (".md" if fileNode.data.class_ else "")] = {
+                "backgroundColor": Color(hsl=(fileNode.data.color.get_hue(), 0.2, 0.2)).get_hex(),
+                "isBold": False,
+                "isItalic": False,
+                "opacity": 1,
+                "applyToSubfolders": False
+            }
+
+        with open(data_file, "w") as data:
+            data.write(json.dumps(config, indent=2))
