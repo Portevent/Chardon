@@ -98,7 +98,11 @@ class ObsidianGraphColorer(ExtraExporter):
         with open(graph_file_path, "w") as graph_file:
             graph_file.write(json.dumps(config, indent=2))
 
-    def color_folders_files(self, data_file: Path):
+    def color_folders_files(self, data_file: Path, saturation: float = 0.2, luminance: float = 0.2):
+        """
+        Write inside color-folders-files plugin config file
+        Add color for each fileNode
+        """
         with open(data_file, "rb") as data:
             config = json.loads(data.read())
 
@@ -108,7 +112,7 @@ class ObsidianGraphColorer(ExtraExporter):
                 continue
 
             config['styles'][fileNode.path + (".md" if fileNode.data.class_ else "")] = {
-                "backgroundColor": Color(hsl=(fileNode.data.color.get_hue(), 0.2, 0.2)).get_hex(),
+                "backgroundColor": Color(hsl=(fileNode.data.color.get_hue(), saturation, luminance)).get_hex(),
                 "isBold": False,
                 "isItalic": False,
                 "opacity": 1,
