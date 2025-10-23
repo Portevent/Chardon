@@ -112,7 +112,7 @@ class MarkdownContentExport(ContentExport):
 
         text = "\n".join([self._export(content) for content in contents])
 
-        return text.replace('\n', breakline)
+        return text.replace('\n', breakline).replace('\m', '\n')
 
     # pylint: disable=too-many-branches
     # pylint: disable=too-many-statements
@@ -205,7 +205,7 @@ class MarkdownContentExport(ContentExport):
 
                         values[key] = content.attributes[key]
                 exported_content = '\n'.join([key + ": " + value for key, value in values.items()])
-                exported_content = f"---\n{exported_content}\n---"
+                exported_content = f"---\m{exported_content}\n---\m"
 
             case ContentType.SECTION:
                 exported_content = joins(
